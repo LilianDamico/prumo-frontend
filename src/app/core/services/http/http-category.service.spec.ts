@@ -15,6 +15,7 @@ function category(overrides: Partial<Category> = {}): Category {
     name: 'Moradia',
     type: CategoryType.EXPENSE,
     active: true,
+    essential: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     ...overrides,
@@ -46,10 +47,22 @@ describe('HttpCategoryService', () => {
 
     const req = httpMock.expectOne(`${BASE_URL}/categories`);
     expect(req.request.method).toBe('GET');
-    req.flush([category()]);
+    req.flush([category({ essential: true })]);
 
     const result = await promise;
-    expect(result).toEqual([category()]);
+    expect(result).toEqual([category({ essential: true })]);
+    expect(result[0].essential).toBe(true);
+  });
+
+  it('should GET a category with essential=false', async () => {
+    const promise = firstValueFrom(service.getById('cat-1'));
+
+    const req = httpMock.expectOne(`${BASE_URL}/categories/cat-1`);
+    expect(req.request.method).toBe('GET');
+    req.flush(category({ essential: false }));
+
+    const result = await promise;
+    expect(result?.essential).toBe(false);
   });
 
   it('should GET a category by id', async () => {
@@ -63,21 +76,25 @@ describe('HttpCategoryService', () => {
     expect(result).toEqual(category());
   });
 
-  it('should POST to create a category', async () => {
+  it('should POST to create a category, including essential', async () => {
     const promise = firstValueFrom(
-      service.create({ name: 'Educação', type: CategoryType.EXPENSE }),
+      service.create({ name: 'Educação', type: CategoryType.EXPENSE, essential: true }),
     );
 
     const req = httpMock.expectOne(`${BASE_URL}/categories`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ name: 'Educação', type: CategoryType.EXPENSE });
-    req.flush(category({ id: 'cat-2', name: 'Educação' }));
+    expect(req.request.body).toEqual({
+      name: 'Educação',
+      type: CategoryType.EXPENSE,
+      essential: true,
+    });
+    req.flush(category({ id: 'cat-2', name: 'Educação', essential: true }));
 
     const result = await promise;
     expect(result.name).toBe('Educação');
   });
 
-  it('should PUT to update a category, merging with the current record', async () => {
+  it('should PUT to update a category, merging with the current record and sending essential', async () => {
     const promise = firstValueFrom(service.update('cat-1', { active: false }));
 
     const getReq = httpMock.expectOne(`${BASE_URL}/categories/cat-1`);
@@ -90,6 +107,7 @@ describe('HttpCategoryService', () => {
       name: 'Moradia',
       type: CategoryType.EXPENSE,
       active: false,
+      essential: true,
     });
     putReq.flush(category({ active: false }));
 
@@ -114,14 +132,16 @@ describe('HttpCategoryService', () => {
       (r) => r.url === `${BASE_URL}/categories` && r.params.get('type') === 'INCOME',
     );
     expect(req.request.method).toBe('GET');
-    req.flush([category({ type: CategoryType.INCOME })]);
+    req.flush([category({ type: CategoryType.INCOME, essential: false })]);
 
     const result = await promise;
     expect(result.every((c) => c.type === CategoryType.INCOME)).toBe(true);
   });
 
   it('should surface a 409 conflict error to the caller', async () => {
-    const promise = firstValueFrom(service.create({ name: 'Moradia', type: CategoryType.EXPENSE }));
+    const promise = firstValueFrom(
+      service.create({ name: 'Moradia', type: CategoryType.EXPENSE, essential: true }),
+    );
 
     const req = httpMock.expectOne(`${BASE_URL}/categories`);
     req.flush(

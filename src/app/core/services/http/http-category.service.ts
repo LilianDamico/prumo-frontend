@@ -11,18 +11,17 @@ import {
 } from '../category.service';
 
 /**
- * Payload de criação enviado ao backend (`POST /categories`). Não inclui
- * `essential`: o backend não conhece este campo — ver divergência de
- * contrato documentada em `Category`.
+ * Payload de criação enviado ao backend (`POST /categories`).
  */
 interface CreateCategoryRequest {
   name: string;
   type: CategoryType;
+  essential: boolean;
 }
 
 /**
  * Payload de atualização enviado ao backend (`PUT /categories/{id}`).
- * O backend espera sempre os três campos; por isso o service busca o
+ * O backend espera sempre os quatro campos; por isso o service busca o
  * registro atual antes de enviar, permitindo chamadas parciais (mesmo
  * comportamento de `LocalCategoryService.update`).
  */
@@ -30,6 +29,7 @@ interface UpdateCategoryRequest {
   name: string;
   type: CategoryType;
   active: boolean;
+  essential: boolean;
 }
 
 /**
@@ -57,7 +57,11 @@ export class HttpCategoryService extends CategoryService {
   }
 
   create(input: CreateCategoryInput): Observable<Category> {
-    const body: CreateCategoryRequest = { name: input.name, type: input.type };
+    const body: CreateCategoryRequest = {
+      name: input.name,
+      type: input.type,
+      essential: input.essential,
+    };
     return this.http.post<Category>(this.baseUrl, body);
   }
 
@@ -68,6 +72,7 @@ export class HttpCategoryService extends CategoryService {
           name: changes.name ?? existing?.name ?? '',
           type: changes.type ?? existing?.type ?? CategoryType.EXPENSE,
           active: changes.active ?? existing?.active ?? true,
+          essential: changes.essential ?? existing?.essential ?? false,
         };
         return this.http.put<Category>(`${this.baseUrl}/${id}`, body);
       }),

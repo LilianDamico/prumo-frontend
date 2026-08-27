@@ -41,7 +41,7 @@ export class LocalCategoryService extends CategoryService {
       name: input.name,
       type: input.type,
       active: true,
-      essential: input.essential ?? false,
+      essential: input.essential,
     };
     return of(this.repository.save(category));
   }
