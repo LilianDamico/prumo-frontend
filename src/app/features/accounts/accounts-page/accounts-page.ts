@@ -47,6 +47,7 @@ export class AccountsPage {
   readonly accountTypeLabels = ACCOUNT_TYPE_LABELS;
 
   readonly accounts = signal<Account[]>([]);
+  readonly loading = signal(true);
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
 
@@ -78,7 +79,7 @@ export class AccountsPage {
     this.editingId.set(account.id);
     this.form.reset({
       name: account.name,
-      institution: account.institution,
+      institution: account.institution ?? '',
       type: account.type,
       currentBalance: account.currentBalance,
       active: account.active,
@@ -117,7 +118,6 @@ export class AccountsPage {
       name: value.name,
       institution: value.institution,
       type: value.type,
-      initialBalance: value.currentBalance,
       currentBalance: value.currentBalance,
       active: value.active,
     };
@@ -145,7 +145,11 @@ export class AccountsPage {
   }
 
   private reload(): void {
-    this.accountService.getAll().subscribe((accounts) => this.accounts.set(accounts));
+    this.loading.set(true);
+    this.accountService.getAll().subscribe((accounts) => {
+      this.accounts.set(accounts);
+      this.loading.set(false);
+    });
   }
 }
 

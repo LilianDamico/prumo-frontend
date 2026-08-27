@@ -39,7 +39,6 @@ function account(overrides: Partial<Account> = {}): Account {
     name: 'Conta corrente',
     institution: 'Banco',
     type: AccountType.CHECKING,
-    initialBalance: 0,
     currentBalance: 1000,
     active: true,
     ...overrides,

@@ -23,6 +23,10 @@
   flex-direction: column;
   gap: 0.5rem;
 
+  &__loading {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
   &__item {
     display: flex;
     align-items: center;

@@ -1,13 +1,20 @@
 import { Account } from '../models';
 import { CrudService } from './crud.service';
 
-export type CreateAccountInput = Omit<Account, 'id'>;
+/** Contrato de criação alinhado ao backend: name, institution, type, currentBalance, active. */
+export type CreateAccountInput = Pick<
+  Account,
+  'name' | 'institution' | 'type' | 'currentBalance' | 'active'
+>;
+
+/** Contrato de atualização: os mesmos campos editáveis, parciais para permitir chamadas parciais da UI. */
 export type UpdateAccountInput = Partial<CreateAccountInput>;
 
 /**
  * Contrato de acesso às contas do usuário. A implementação atual usa
- * `localStorage` (`LocalAccountService`); no futuro poderá ser trocada por
- * uma implementação com `HttpClient` sem alterar quem depende deste token.
+ * `HttpAccountService` (backend Spring Boot); `LocalAccountService`
+ * permanece disponível como implementação alternativa baseada em
+ * `localStorage`.
  */
 export abstract class AccountService extends CrudService<
   Account,

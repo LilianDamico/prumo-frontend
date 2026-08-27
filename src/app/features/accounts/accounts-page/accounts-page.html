@@ -49,7 +49,9 @@
   </form>
 }
 
-@if (accounts().length === 0) {
+@if (loading()) {
+  <p class="account-list__loading">Carregando contas…</p>
+} @else if (accounts().length === 0) {
   <app-empty-state
     message="Você ainda não cadastrou nenhuma conta."
     hint="Cadastre a conta onde você guarda ou movimenta seu dinheiro, como sua conta corrente."
@@ -62,7 +64,7 @@
         <div class="account-list__info">
           <span class="account-list__name">{{ account.name }}</span>
           <span class="account-list__meta">
-            {{ account.institution }} · {{ accountTypeLabels[account.type] }}
+            {{ account.institution ?? 'Não informada' }} · {{ accountTypeLabels[account.type] }}
             @if (!account.active) {
               · Inativa
             }
