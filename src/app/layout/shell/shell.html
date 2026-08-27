@@ -1,0 +1,17 @@
+﻿<mat-sidenav-container class="shell">
+  <mat-sidenav
+    #drawer
+    class="shell__sidenav"
+    [mode]="(isHandset$ | async) ? 'over' : 'side'"
+    [opened]="!(isHandset$ | async)"
+    [fixedInViewport]="(isHandset$ | async) ?? false"
+  >
+    <app-sidebar />
+  </mat-sidenav>
+  <mat-sidenav-content class="shell__content">
+    <app-header (menuToggle)="drawer.toggle()" />
+    <main class="shell__main" id="conteudo-principal">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

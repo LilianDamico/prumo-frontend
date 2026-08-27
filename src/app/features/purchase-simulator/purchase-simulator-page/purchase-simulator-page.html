@@ -1,0 +1,133 @@
+﻿<app-page-header
+  title="Posso comprar?"
+  subtitle="Veja como essa compra afeta suas contas antes de decidir."
+/>
+
+<form class="purchase-simulator-form" [formGroup]="form" (ngSubmit)="simulate()">
+  <mat-form-field appearance="outline">
+    <mat-label>Valor da compra</mat-label>
+    <span matTextPrefix>R$&nbsp;</span>
+    <input matInput type="number" step="0.01" min="0.01" formControlName="amount" required />
+    @if (form.controls.amount.invalid && form.controls.amount.touched) {
+      <mat-error>Informe um valor maior que zero.</mat-error>
+    }
+  </mat-form-field>
+
+  <fieldset class="purchase-simulator-form__payment-method">
+    <legend>Forma de pagamento</legend>
+    <mat-radio-group formControlName="paymentMethod" aria-label="Forma de pagamento">
+      <mat-radio-button [value]="paymentMethods.CASH">À vista</mat-radio-button>
+      <mat-radio-button [value]="paymentMethods.INSTALLMENTS">Parcelado</mat-radio-button>
+    </mat-radio-group>
+  </fieldset>
+
+  @if (isInstallments()) {
+    <mat-form-field appearance="outline">
+      <mat-label>Quantidade de parcelas</mat-label>
+      <input
+        matInput
+        type="number"
+        [min]="2"
+        [max]="maxInstallments"
+        formControlName="installmentsCount"
+        required
+      />
+      <mat-hint>Mínimo de 2 parcelas, até {{ maxInstallments }}.</mat-hint>
+      @if (form.controls.installmentsCount.invalid && form.controls.installmentsCount.touched) {
+        <mat-error>Informe um número de parcelas entre 2 e {{ maxInstallments }}.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <mat-form-field appearance="outline">
+    <mat-label>Primeira cobrança</mat-label>
+    <input matInput type="month" formControlName="firstChargeMonth" required />
+    @if (form.controls.firstChargeMonth.invalid && form.controls.firstChargeMonth.touched) {
+      <mat-error>Escolha o mês da primeira cobrança.</mat-error>
+    }
+  </mat-form-field>
+
+  <div class="purchase-simulator-form__actions">
+    <button mat-button type="button" (click)="reset()">Limpar</button>
+    <button mat-flat-button type="submit">Simular</button>
+  </div>
+</form>
+
+@if (submitted() && output(); as currentOutput) {
+  <div aria-live="polite" role="status" class="purchase-simulator-result-region">
+  @if (currentOutput.status === 'INSUFFICIENT_DATA') {
+    <app-empty-state
+      [message]="currentOutput.missingData.message"
+      [hint]="currentOutput.missingData.hint"
+      icon="info"
+    >
+    </app-empty-state>
+    @if (currentOutput.missingData.hint?.includes('renda')) {
+      <app-action-suggestion message="Cadastre sua renda para simular com mais confiança.">
+        <a action mat-button routerLink="/incomes">Cadastrar renda</a>
+      </app-action-suggestion>
+    }
+  } @else {
+    <section class="purchase-simulator-result" aria-label="Resultado da simulação">
+      <div class="purchase-simulator-result__heading">
+        <app-status-badge
+          [level]="outcomeLevel(currentOutput.result.outcome)"
+          [label]="outcomeLabel(currentOutput.result.outcome)"
+        />
+        <h2>{{ outcomeTitle(currentOutput.result.outcome) }}</h2>
+      </div>
+
+      <p class="purchase-simulator-result__summary">
+        {{ outcomeSummary(currentOutput.result.outcome, currentOutput.result.tightestMonth) }}
+      </p>
+
+      @if (availableAmountTopic(); as topic) {
+        <app-info-explanation
+          [title]="topic.title"
+          [description]="topic.shortExplanation"
+          [whyItMatters]="topic.whyItMatters"
+          [learnMoreSlug]="topic.slug"
+        />
+      }
+
+      <app-info-explanation title="Como chegamos a esse resultado?" description="Em {{ monthLabel(currentOutput.result.tightestMonth.referenceMonth) }}:">
+      </app-info-explanation>
+      <ul class="purchase-simulator-result__breakdown">
+        <li>Você deve receber: <app-money-value [value]="currentOutput.result.tightestMonth.projectedIncome" /></li>
+        <li>
+          Contas e compromissos:
+          <app-money-value [value]="currentOutput.result.tightestMonth.projectedCommitments" />
+        </li>
+        <li>Nova parcela: <app-money-value [value]="currentOutput.result.tightestMonth.purchaseAmount" /></li>
+        <li>
+          Deve sobrar:
+          <app-money-value [value]="currentOutput.result.tightestMonth.projectedAvailableAfterPurchase" />
+        </li>
+      </ul>
+
+      <h3>Veja o impacto mês a mês</h3>
+      <ul class="purchase-simulator-result__months">
+        @for (month of currentOutput.result.monthlyImpact; track month.referenceMonth) {
+          <li
+            class="purchase-simulator-result__month"
+            [class.purchase-simulator-result__month--tightest]="month === currentOutput.result.tightestMonth"
+          >
+            <span class="purchase-simulator-result__month-label">
+              {{ monthLabel(month.referenceMonth) }}
+              @if (month === currentOutput.result.tightestMonth) {
+                <strong>(mês mais apertado)</strong>
+              }
+            </span>
+            <span class="purchase-simulator-result__month-detail">
+              Nova parcela: <app-money-value [value]="month.purchaseAmount" />
+            </span>
+            <span class="purchase-simulator-result__month-detail">
+              Deve sobrar: <app-money-value [value]="month.projectedAvailableAfterPurchase" />
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+  </div>
+}

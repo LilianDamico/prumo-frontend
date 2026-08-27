@@ -1,0 +1,24 @@
+﻿<div class="info-explanation">
+  <div class="info-explanation__heading">
+    <mat-icon aria-hidden="true">lightbulb</mat-icon>
+    <h3 class="info-explanation__title">{{ title() }}</h3>
+  </div>
+  <p class="info-explanation__description">{{ description() }}</p>
+  @if (example()) {
+    <p class="info-explanation__example"><strong>Exemplo:</strong> {{ example() }}</p>
+  }
+  @if (whyItMatters()) {
+    <p class="info-explanation__why">
+      <strong>Por que isso importa?</strong> {{ whyItMatters() }}
+    </p>
+  }
+  @if (learnMoreSlug()) {
+    <a
+      class="info-explanation__learn-more"
+      [routerLink]="['/financial-education']"
+      [queryParams]="{ topico: learnMoreSlug() }"
+    >
+      Entender melhor
+    </a>
+  }
+</div>

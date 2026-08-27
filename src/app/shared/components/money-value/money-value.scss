@@ -1,0 +1,8 @@
+﻿.money-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+
+  &--negative {
+    color: var(--mat-sys-error);
+  }
+}

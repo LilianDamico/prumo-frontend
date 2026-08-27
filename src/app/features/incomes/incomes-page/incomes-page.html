@@ -1,0 +1,101 @@
+﻿<app-page-header title="Receitas" subtitle="O dinheiro que entra para você.">
+  <button mat-flat-button actions (click)="startCreate()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nova receita
+  </button>
+</app-page-header>
+
+@if (showForm()) {
+  <form class="income-form" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="description" required />
+      @if (form.controls.description.invalid && form.controls.description.touched) {
+        <mat-error>Informe a descrição da receita.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor</mat-label>
+      <input matInput type="number" step="0.01" formControlName="amount" required />
+      @if (form.controls.amount.invalid && form.controls.amount.touched) {
+        <mat-error>Informe o valor da receita.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data</mat-label>
+      <input matInput type="date" formControlName="incomeDate" required />
+      @if (form.controls.incomeDate.invalid && form.controls.incomeDate.touched) {
+        <mat-error>Informe a data em que recebeu.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Categoria</mat-label>
+      <mat-select formControlName="categoryId" required>
+        @for (category of categories(); track category.id) {
+          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.categoryId.invalid && form.controls.categoryId.touched) {
+        <mat-error>Escolha uma categoria.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Conta</mat-label>
+      <mat-select formControlName="accountId" required>
+        @for (account of accounts(); track account.id) {
+          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.accountId.invalid && form.controls.accountId.touched) {
+        <mat-error>Escolha em qual conta o dinheiro entrou.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-checkbox formControlName="recurring">Receita recorrente (se repete todo mês)</mat-checkbox>
+
+    <div class="income-form__actions">
+      <button mat-button type="button" (click)="cancelForm()">Cancelar</button>
+      <button mat-flat-button type="submit">Salvar</button>
+    </div>
+  </form>
+}
+
+@if (incomes().length === 0) {
+  <app-empty-state
+    message="Você ainda não cadastrou nenhuma receita."
+    hint="Comece pelo salário ou por outra entrada de dinheiro que você recebe com frequência."
+    icon="payments"
+  />
+} @else {
+  <ul class="income-list">
+    @for (income of incomes(); track income.id) {
+      <li class="income-list__item">
+        <div class="income-list__info">
+          <span class="income-list__description">{{ income.description }}</span>
+          <span class="income-list__meta">
+            {{ categoryNameById().get(income.categoryId) }} ·
+            {{ accountNameById().get(income.accountId) }} ·
+            {{ income.incomeDate | date: 'dd/MM/yyyy' }}
+            @if (income.recurring) {
+              · Recorrente
+            }
+          </span>
+        </div>
+        <app-money-value [value]="income.amount" />
+        <div class="income-list__actions">
+          <button mat-icon-button (click)="startEdit(income)" aria-label="Editar receita">
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="remove(income)" aria-label="Excluir receita">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+}
+

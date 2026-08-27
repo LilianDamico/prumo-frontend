@@ -1,0 +1,160 @@
+﻿<app-page-header title="Dívidas" subtitle="As dívidas que você está pagando ou negociando.">
+  <button mat-flat-button actions (click)="startCreate()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nova dívida
+  </button>
+</app-page-header>
+
+@if (showForm()) {
+  <form class="debt-form" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline">
+      <mat-label>Credor</mat-label>
+      <input matInput formControlName="creditor" required />
+      @if (form.controls.creditor.invalid && form.controls.creditor.touched) {
+        <mat-error>Informe quem é o credor.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="description" required />
+      @if (form.controls.description.invalid && form.controls.description.touched) {
+        <mat-error>Informe a descrição da dívida.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="type" required>
+        @for (type of debtTypes; track type) {
+          <mat-option [value]="type">{{ debtTypeLabels[type] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor original</mat-label>
+      <input matInput type="number" step="0.01" formControlName="originalAmount" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Quanto falta pagar</mat-label>
+      <input matInput type="number" step="0.01" formControlName="currentBalance" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Juros ao mês (%)</mat-label>
+      <input matInput type="number" step="0.01" formControlName="interestRateMonthly" />
+      <mat-hint>Não sabe? Tudo bem. Você pode deixar em branco e completar depois.</mat-hint>
+    </mat-form-field>
+
+    @if (interestRateTopic(); as topic) {
+      <app-info-explanation
+        [title]="topic.title"
+        [description]="topic.shortExplanation"
+        [whyItMatters]="topic.whyItMatters"
+        [learnMoreSlug]="topic.slug"
+      />
+    }
+
+    @if (monthlyInterestPerThousand(); as perThousand) {
+      <p class="debt-form__interest-hint">
+        Isso significa cerca de R$ {{ formatDecimal(perThousand) }} de juros em um mês para cada R$ 1.000 ainda
+        devidos, antes de considerar pagamentos e outras cobranças. É uma aproximação.
+      </p>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Pagamento mínimo</mat-label>
+      <input matInput type="number" step="0.01" formControlName="minimumPayment" />
+      <mat-hint>Se não souber, pode deixar em branco.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor da parcela</mat-label>
+      <input matInput type="number" step="0.01" formControlName="installmentAmount" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Quantidade de parcelas</mat-label>
+      <input matInput type="number" min="1" formControlName="totalInstallments" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Parcelas restantes</mat-label>
+      <input matInput type="number" min="0" formControlName="remainingInstallments" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dia do vencimento</mat-label>
+      <input matInput type="number" min="1" max="31" formControlName="dueDay" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data de início</mat-label>
+      <input matInput type="date" formControlName="startDate" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Situação</mat-label>
+      <mat-select formControlName="status" required>
+        @for (status of debtStatuses; track status) {
+          <mat-option [value]="status">{{ debtStatusLabels[status] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="debt-form__actions">
+      <button mat-button type="button" (click)="cancelForm()">Cancelar</button>
+      <button mat-flat-button type="submit">Salvar</button>
+    </div>
+  </form>
+}
+
+@if (debts().length === 0) {
+  <app-empty-state
+    message="Você ainda não cadastrou nenhuma dívida."
+    hint="Cadastre suas dívidas para acompanhar quanto falta pagar de cada uma."
+    icon="account_balance_wallet"
+  />
+} @else {
+  @if (outstandingBalanceTopic(); as topic) {
+    <app-info-explanation
+      [title]="topic.title"
+      [description]="topic.shortExplanation"
+      [whyItMatters]="topic.whyItMatters"
+      [learnMoreSlug]="topic.slug"
+    />
+  }
+  <ul class="debt-list">
+    @for (debt of debts(); track debt.id) {
+      <li class="debt-list__item">
+        <div class="debt-list__info">
+          <span class="debt-list__creditor">{{ debt.creditor }} — {{ debt.description }}</span>
+          <span class="debt-list__meta">
+            {{ debtTypeLabels[debt.type] }} · Vence dia {{ debt.dueDay }}
+            @if (debt.remainingInstallments !== undefined && debt.totalInstallments !== undefined) {
+              · {{ debt.remainingInstallments }} de {{ debt.totalInstallments }} parcelas restantes
+            }
+          </span>
+          @if (interestExplanation(debt); as explanation) {
+            <span class="debt-list__interest">{{ explanation }}</span>
+          } @else {
+            <span class="debt-list__interest">Ainda não temos a taxa de juros desta dívida.</span>
+          }
+        </div>
+        <app-status-badge [level]="statusLevel(debt.status)" [label]="debtStatusLabels[debt.status]" />
+        <app-money-value [value]="debt.currentBalance" />
+        <div class="debt-list__actions">
+          <button mat-icon-button (click)="startEdit(debt)" aria-label="Editar dívida">
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="remove(debt)" aria-label="Excluir dívida">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+}
+

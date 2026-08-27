@@ -1,0 +1,116 @@
+﻿<app-page-header title="Despesas" subtitle="As contas que você precisa pagar.">
+  <button mat-flat-button actions (click)="startCreate()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nova despesa
+  </button>
+</app-page-header>
+
+@if (showForm()) {
+  <form class="expense-form" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="description" required />
+      @if (form.controls.description.invalid && form.controls.description.touched) {
+        <mat-error>Informe a descrição da despesa.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor</mat-label>
+      <input matInput type="number" step="0.01" formControlName="amount" required />
+      @if (form.controls.amount.invalid && form.controls.amount.touched) {
+        <mat-error>Informe o valor da despesa.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Vencimento</mat-label>
+      <input matInput type="date" formControlName="dueDate" required />
+      @if (form.controls.dueDate.invalid && form.controls.dueDate.touched) {
+        <mat-error>Informe a data de vencimento.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data de pagamento</mat-label>
+      <input matInput type="date" formControlName="paymentDate" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Categoria</mat-label>
+      <mat-select formControlName="categoryId" required>
+        @for (category of categories(); track category.id) {
+          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.categoryId.invalid && form.controls.categoryId.touched) {
+        <mat-error>Escolha uma categoria.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Conta</mat-label>
+      <mat-select formControlName="accountId" required>
+        @for (account of accounts(); track account.id) {
+          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.accountId.invalid && form.controls.accountId.touched) {
+        <mat-error>Escolha de qual conta o dinheiro vai sair.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Situação</mat-label>
+      <mat-select formControlName="status" required>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-checkbox formControlName="recurring">Despesa recorrente (se repete todo mês)</mat-checkbox>
+
+    <div class="expense-form__actions">
+      <button mat-button type="button" (click)="cancelForm()">Cancelar</button>
+      <button mat-flat-button type="submit">Salvar</button>
+    </div>
+  </form>
+}
+
+@if (expenses().length === 0) {
+  <app-empty-state
+    message="Você ainda não cadastrou nenhuma despesa."
+    hint="Cadastre as contas que você costuma pagar todo mês, como aluguel ou luz."
+    icon="receipt_long"
+  />
+} @else {
+  <ul class="expense-list">
+    @for (expense of expenses(); track expense.id) {
+      <li class="expense-list__item">
+        <div class="expense-list__info">
+          <span class="expense-list__description">{{ expense.description }}</span>
+          <span class="expense-list__meta">
+            {{ categoryNameById().get(expense.categoryId) }} ·
+            {{ accountNameById().get(expense.accountId) }} · Vence em
+            {{ expense.dueDate | date: 'dd/MM/yyyy' }}
+            @if (expense.recurring) {
+              · Recorrente
+            }
+          </span>
+        </div>
+        <app-status-badge [level]="statusLevel(expense.status)" [label]="statusLabels[expense.status]" />
+        <app-money-value [value]="expense.amount" />
+        <div class="expense-list__actions">
+          <button mat-icon-button (click)="startEdit(expense)" aria-label="Editar despesa">
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="remove(expense)" aria-label="Excluir despesa">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+}
+

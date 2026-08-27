@@ -1,0 +1,21 @@
+﻿.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  &__menu-button {
+    display: none;
+  }
+
+  &__brand {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 959.98px) {
+  .header__menu-button {
+    display: inline-flex;
+  }
+}

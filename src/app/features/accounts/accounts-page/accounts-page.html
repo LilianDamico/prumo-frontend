@@ -1,0 +1,84 @@
+﻿<app-page-header title="Contas" subtitle="As contas onde seu dinheiro entra, sai e fica guardado.">
+  <button mat-flat-button actions (click)="startCreate()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nova conta
+  </button>
+</app-page-header>
+
+@if (showForm()) {
+  <form class="account-form" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline">
+      <mat-label>Nome</mat-label>
+      <input matInput formControlName="name" required />
+      @if (form.controls.name.invalid && form.controls.name.touched) {
+        <mat-error>Informe o nome da conta.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Instituição</mat-label>
+      <input matInput formControlName="institution" required />
+      @if (form.controls.institution.invalid && form.controls.institution.touched) {
+        <mat-error>Informe a instituição.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="type" required>
+        @for (type of accountTypes; track type) {
+          <mat-option [value]="type">{{ accountTypeLabels[type] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Saldo atual</mat-label>
+      <input matInput type="number" step="0.01" formControlName="currentBalance" required />
+      @if (form.controls.currentBalance.invalid && form.controls.currentBalance.touched) {
+        <mat-error>Informe o saldo atual da conta.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-checkbox formControlName="active">Conta ativa</mat-checkbox>
+
+    <div class="account-form__actions">
+      <button mat-button type="button" (click)="cancelForm()">Cancelar</button>
+      <button mat-flat-button type="submit">Salvar</button>
+    </div>
+  </form>
+}
+
+@if (accounts().length === 0) {
+  <app-empty-state
+    message="Você ainda não cadastrou nenhuma conta."
+    hint="Cadastre a conta onde você guarda ou movimenta seu dinheiro, como sua conta corrente."
+    icon="account_balance"
+  />
+} @else {
+  <ul class="account-list">
+    @for (account of accounts(); track account.id) {
+      <li class="account-list__item">
+        <div class="account-list__info">
+          <span class="account-list__name">{{ account.name }}</span>
+          <span class="account-list__meta">
+            {{ account.institution }} · {{ accountTypeLabels[account.type] }}
+            @if (!account.active) {
+              · Inativa
+            }
+          </span>
+        </div>
+        <app-money-value [value]="account.currentBalance" />
+        <div class="account-list__actions">
+          <button mat-icon-button (click)="startEdit(account)" aria-label="Editar conta">
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="remove(account)" aria-label="Excluir conta">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+}
+

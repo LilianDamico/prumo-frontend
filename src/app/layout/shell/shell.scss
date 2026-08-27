@@ -1,0 +1,13 @@
+﻿.shell {
+  height: 100vh;
+
+  &__sidenav {
+    width: 264px;
+  }
+
+  &__main {
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}

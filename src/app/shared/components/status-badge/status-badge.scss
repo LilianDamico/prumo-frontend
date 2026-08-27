@@ -1,0 +1,36 @@
+﻿.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.4;
+
+  mat-icon {
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &--ok {
+    background-color: #e3f3ea;
+    color: #1e6b3c;
+  }
+
+  &--attention {
+    background-color: #fff3e0;
+    color: #8a5a00;
+  }
+
+  &--risk {
+    background-color: #fde8e8;
+    color: #a12626;
+  }
+
+  &--urgent {
+    background-color: #4a1414;
+    color: #ffffff;
+  }
+}

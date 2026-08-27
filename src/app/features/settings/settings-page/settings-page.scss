@@ -1,0 +1,21 @@
+.settings-page {
+  &__about {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    background-color: var(--mat-sys-surface-container);
+    max-width: 40rem;
+  }
+
+  &__about-title {
+    margin: 0 0 0.5rem;
+    letter-spacing: 0.08em;
+    font-size: 1rem;
+  }
+
+  &__about-phrase {
+    margin: 0;
+    font-style: italic;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

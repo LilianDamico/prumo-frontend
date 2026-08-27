@@ -1,0 +1,20 @@
+﻿<mat-card
+  class="summary-card"
+  [class]="'summary-card--' + tone()"
+  [class.summary-card--highlighted]="highlighted()"
+>
+  <mat-card-content class="summary-card__content">
+    @if (icon()) {
+      <mat-icon class="summary-card__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+    }
+    <div class="summary-card__body">
+      <p class="summary-card__label">{{ label() }}</p>
+      <div class="summary-card__value">
+        <ng-content select="[value]" />
+      </div>
+      <div class="summary-card__description">
+        <ng-content select="[description]" />
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

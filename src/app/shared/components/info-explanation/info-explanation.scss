@@ -1,0 +1,33 @@
+﻿.info-explanation {
+  background-color: var(--mat-sys-surface-container);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  &__description,
+  &__example,
+  &__why {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  &__learn-more {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+}

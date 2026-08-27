@@ -1,0 +1,7 @@
+﻿<div class="action-suggestion">
+  <mat-icon class="action-suggestion__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+  <p class="action-suggestion__message">{{ message() }}</p>
+  <div class="action-suggestion__action">
+    <ng-content select="[action]" />
+  </div>
+</div>

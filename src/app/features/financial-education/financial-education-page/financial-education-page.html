@@ -1,0 +1,85 @@
+﻿<app-page-header title="Me explica" subtitle="Finanças em português claro." />
+
+@if (selectedTopic(); as topic) {
+  <section class="financial-education-detail" aria-label="Detalhe do conceito">
+    <button mat-button (click)="closeTopic()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      Voltar para a busca
+    </button>
+
+    <h2>{{ topic.title }}</h2>
+
+    <h3>O que é?</h3>
+    <p>{{ topic.shortExplanation }}</p>
+
+    <h3>Por que isso importa?</h3>
+    <p>{{ topic.whyItMatters }}</p>
+
+    @if (topic.example) {
+      <h3>Exemplo</h3>
+      <p>{{ topic.example }}</p>
+    }
+
+    @if (relatedTopics().length > 0) {
+      <h3>Assuntos relacionados</h3>
+      <ul class="financial-education-detail__related">
+        @for (related of relatedTopics(); track related.id) {
+          <li>
+            <button mat-button type="button" (click)="openRelated(related)">{{ related.title }}</button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+} @else {
+  <form class="financial-education-search" (ngSubmit)="search()" [formGroup]="searchForm">
+    <mat-form-field appearance="outline" class="financial-education-search__field">
+      <mat-label>O que você quer entender?</mat-label>
+      <input matInput formControlName="query" (input)="search()" />
+      <mat-icon matSuffix aria-hidden="true">search</mat-icon>
+    </mat-form-field>
+    @if (searchForm.controls.query.value) {
+      <button mat-button type="button" (click)="clearSearch()">Limpar</button>
+    }
+  </form>
+
+  <div class="financial-education-categories" role="group" aria-label="Filtrar por categoria">
+    <button
+      mat-stroked-button
+      type="button"
+      [class.financial-education-categories__button--active]="selectedCategory() === null"
+      (click)="filterByCategory(null)"
+    >
+      Todos os assuntos
+    </button>
+    @for (category of categories; track category) {
+      <button
+        mat-stroked-button
+        type="button"
+        [class.financial-education-categories__button--active]="selectedCategory() === category"
+        (click)="filterByCategory(category)"
+      >
+        {{ categoryLabels[category] }}
+      </button>
+    }
+  </div>
+
+  @if (visibleTopics().length === 0) {
+    <app-empty-state
+      message="Não encontramos nada com esse termo."
+      hint="Tente descrever com suas próprias palavras o que você quer entender."
+      icon="help_outline"
+    />
+  } @else {
+    <ul class="financial-education-list">
+      @for (topic of visibleTopics(); track topic.id) {
+        <li class="financial-education-list__item">
+          <h3>{{ topic.title }}</h3>
+          <p>{{ topic.shortExplanation }}</p>
+          <button mat-button type="button" (click)="open(topic)">Entender melhor</button>
+        </li>
+      }
+    </ul>
+  }
+}
+

@@ -1,0 +1,49 @@
+.financial-education-search {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+
+  &__field {
+    flex: 1 1 320px;
+  }
+}
+
+.financial-education-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  &__button--active {
+    font-weight: 700;
+    text-decoration: underline;
+  }
+}
+
+.financial-education-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  &__item {
+    border: 1px solid var(--mat-sys-outline-variant, #ccc);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+  }
+}
+
+.financial-education-detail {
+  max-width: 640px;
+
+  &__related {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}

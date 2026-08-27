@@ -1,0 +1,71 @@
+﻿<app-page-header title="Painel" subtitle="Um resumo simples do seu dinheiro neste mês." />
+
+<div class="dashboard">
+  <section class="dashboard__summary" aria-label="Resumo do mês">
+    <app-summary-card label="Entrou" icon="arrow_downward" tone="positive">
+      <span value><app-money-value [value]="position()?.totalIncome ?? 0" /></span>
+    </app-summary-card>
+
+    <app-summary-card label="Saiu" icon="arrow_upward" tone="neutral">
+      <span value><app-money-value [value]="position()?.totalPaidExpenses ?? 0" /></span>
+    </app-summary-card>
+
+    <app-summary-card label="Ainda falta pagar" icon="schedule" tone="attention">
+      <span value><app-money-value [value]="position()?.totalPendingExpenses ?? 0" /></span>
+    </app-summary-card>
+
+    <app-summary-card
+      label="Quanto você pode usar"
+      icon="account_balance_wallet"
+      [highlighted]="true"
+    >
+      <span value><app-money-value [value]="position()?.availableAmount ?? 0" /></span>
+      <p description>
+        Já descontamos as contas que faltam pagar, as parcelas obrigatórias e a reserva planejada.
+      </p>
+    </app-summary-card>
+
+    <app-summary-card label="Dívidas" icon="credit_card" tone="critical">
+      <span value><app-money-value [value]="totalDebtBalance()" /></span>
+    </app-summary-card>
+  </section>
+
+  <section class="dashboard__status" aria-label="Como estão suas contas">
+    <h2>Como estão suas contas?</h2>
+    <app-status-badge [level]="statusLevel()" [label]="statusLabel()" />
+    <p class="dashboard__status-text">{{ statusExplanation() }}</p>
+  </section>
+
+  <section class="dashboard__upcoming" aria-label="Próximas contas">
+    <h2>Próximas contas</h2>
+    @if (upcomingExpenses().length === 0) {
+      <app-empty-state
+        message="Você não tem contas pendentes no momento."
+        hint="Assim que cadastrar uma despesa, ela vai aparecer aqui, ordenada por vencimento."
+        icon="event_available"
+      />
+    } @else {
+      <ul class="dashboard__upcoming-list">
+        @for (expense of upcomingExpenses(); track expense.id) {
+          <li class="dashboard__upcoming-item" [class.dashboard__upcoming-item--overdue]="expense.overdue">
+            <span class="dashboard__upcoming-description">{{ expense.description }}</span>
+            <span class="dashboard__upcoming-date">{{ expense.dueDate | date: 'dd/MM/yyyy' }}</span>
+            <app-money-value [value]="expense.amount" />
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="dashboard__alerts" aria-label="O que merece sua atenção">
+    <h2>O que merece sua atenção</h2>
+    @if (alerts().length === 0) {
+      <p class="dashboard__alerts-empty">Nenhum alerta por enquanto. Continue assim.</p>
+    } @else {
+      @for (alert of alerts(); track alert) {
+        <app-action-suggestion [message]="alert" icon="priority_high" />
+      }
+    }
+  </section>
+</div>
+

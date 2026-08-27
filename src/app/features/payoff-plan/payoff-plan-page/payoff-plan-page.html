@@ -1,0 +1,101 @@
+﻿<app-page-header
+  title="Meu Caminho"
+  subtitle="Compare estratégias para reduzir suas dívidas, no seu ritmo."
+/>
+
+@if (output(); as currentOutput) {
+  @if (currentOutput.status === 'INSUFFICIENT_DATA') {
+    <app-empty-state [message]="currentOutput.missingData.message" [hint]="currentOutput.missingData.hint" icon="route">
+    </app-empty-state>
+    <app-action-suggestion message="Cadastre suas dívidas e receitas para vermos seu caminho de quitação.">
+      <a action mat-button routerLink="/debts">Cadastrar dívidas</a>
+    </app-action-suggestion>
+  } @else {
+    <section class="payoff-plan-progress" aria-label="Progresso geral das dívidas">
+      <p>
+        Você começou com <app-money-value [value]="currentOutput.result.progress.totalOriginalAmount" />
+      </p>
+      <p>
+        Hoje deve <app-money-value [value]="currentOutput.result.progress.totalCurrentBalance" />
+      </p>
+      <p>
+        Você já eliminou <app-money-value [value]="currentOutput.result.progress.totalEliminated" />
+      </p>
+      <div
+        class="payoff-plan-progress__bar"
+        role="progressbar"
+        [attr.aria-valuenow]="currentOutput.result.progress.totalEliminated"
+        [attr.aria-valuemin]="0"
+        [attr.aria-valuemax]="currentOutput.result.progress.totalOriginalAmount"
+      >
+        <div
+          class="payoff-plan-progress__bar-fill"
+          [style.width.%]="
+            currentOutput.result.progress.totalOriginalAmount > 0
+              ? (currentOutput.result.progress.totalEliminated / currentOutput.result.progress.totalOriginalAmount) *
+                100
+              : 0
+          "
+        ></div>
+      </div>
+    </section>
+
+    <section class="payoff-plan-strategies" aria-label="Comparação de estratégias">
+      @for (simulation of currentOutput.result.simulations; track simulation.strategy) {
+        <article class="payoff-plan-strategy">
+          <h2>{{ simulation.title }}</h2>
+          <p class="payoff-plan-strategy__technical-name">({{ simulation.technicalName }})</p>
+
+          @if (strategyTopic(simulation.strategy); as topic) {
+            <app-info-explanation
+              [title]="topic.title"
+              [description]="topic.shortExplanation"
+              [whyItMatters]="topic.whyItMatters"
+              [learnMoreSlug]="topic.slug"
+            />
+          }
+
+          <dl class="payoff-plan-strategy__summary">
+            <div>
+              <dt>Total atual das dívidas</dt>
+              <dd><app-money-value [value]="simulation.totalDebtAmount" /></dd>
+            </div>
+            <div>
+              <dt>Já eliminado</dt>
+              <dd><app-money-value [value]="simulation.totalEliminated" /></dd>
+            </div>
+            <div>
+              <dt>Valor mensal disponível para pagamento</dt>
+              <dd><app-money-value [value]="simulation.monthlyAvailableForPayoff" /></dd>
+            </div>
+            <div>
+              <dt>Estimativa de tempo</dt>
+              <dd>{{ timeEstimateLabel(simulation) }}</dd>
+            </div>
+            <div>
+              <dt>Estimativa de juros</dt>
+              @if (simulation.hasUnknownInterestRate || simulation.estimatedInterestPaid === undefined) {
+                <dd>Ainda não temos informações suficientes para calcular os juros com segurança.</dd>
+              } @else {
+                <dd><app-money-value [value]="simulation.estimatedInterestPaid" /></dd>
+              }
+            </div>
+          </dl>
+
+          <h3>Ordem sugerida</h3>
+          <ol class="payoff-plan-strategy__order">
+            @for (step of simulation.steps; track step.debtId) {
+              <li>
+                {{ debtLabel(step.debtId) }}
+                @if (monthLabel(step.estimatedPayoffMonth); as label) {
+                  <span> — quitação estimada em {{ label }}</span>
+                }
+              </li>
+            }
+          </ol>
+        </article>
+      }
+    </section>
+  }
+}
+

@@ -1,0 +1,105 @@
+.purchase-simulator-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+
+  &__payment-method {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: none;
+    padding: 0;
+    margin: 0;
+
+    legend {
+      font-size: 0.875rem;
+      color: var(--mat-sys-on-surface-variant);
+      padding: 0;
+      margin-bottom: 0.25rem;
+    }
+
+    mat-radio-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}
+
+.purchase-simulator-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 640px;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.125rem;
+    }
+  }
+
+  &__summary {
+    font-size: 0.9375rem;
+  }
+
+  &__breakdown {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  &__months {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__month {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--mat-sys-outline-variant);
+
+    &--tightest {
+      border-color: var(--mat-sys-error);
+      border-width: 2px;
+    }
+  }
+
+  &__month-label {
+    font-weight: 500;
+  }
+
+  &__month-detail {
+    font-size: 0.8125rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
