@@ -1,5 +1,5 @@
 ﻿<app-page-header title="Despesas" subtitle="As contas que você precisa pagar.">
-  <button mat-flat-button actions (click)="startCreate()">
+  <button mat-flat-button actions [disabled]="dependenciesLoading()" (click)="startCreate()">
     <mat-icon aria-hidden="true">add</mat-icon>
     Nova despesa
   </button>
@@ -34,13 +34,18 @@
     <mat-form-field appearance="outline">
       <mat-label>Data de pagamento</mat-label>
       <input matInput type="date" formControlName="paymentDate" />
+      @if (form.controls.paymentDate.invalid && form.controls.paymentDate.touched) {
+        <mat-error>Informe a data de pagamento para uma despesa paga.</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Categoria</mat-label>
       <mat-select formControlName="categoryId" required>
-        @for (category of categories(); track category.id) {
-          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        @for (category of selectableCategories(); track category.id) {
+          <mat-option [value]="category.id">
+            {{ category.name }}{{ !category.active ? ' (inativa)' : '' }}
+          </mat-option>
         }
       </mat-select>
       @if (form.controls.categoryId.invalid && form.controls.categoryId.touched) {
@@ -51,8 +56,10 @@
     <mat-form-field appearance="outline">
       <mat-label>Conta</mat-label>
       <mat-select formControlName="accountId" required>
-        @for (account of accounts(); track account.id) {
-          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        @for (account of selectableAccounts(); track account.id) {
+          <mat-option [value]="account.id">
+            {{ account.name }}{{ !account.active ? ' (inativa)' : '' }}
+          </mat-option>
         }
       </mat-select>
       @if (form.controls.accountId.invalid && form.controls.accountId.touched) {
@@ -76,9 +83,19 @@
       <button mat-flat-button type="submit">Salvar</button>
     </div>
   </form>
+} @else if (!dependenciesLoading() && (!hasActiveAccounts() || !hasActiveCategories())) {
+  <p class="expense-form__hint">
+    @if (!hasActiveAccounts()) {
+      Cadastre uma conta ativa antes de registrar uma despesa.
+    } @else {
+      Cadastre uma categoria de despesa ativa antes de registrar uma despesa.
+    }
+  </p>
 }
 
-@if (expenses().length === 0) {
+@if (expensesLoading()) {
+  <p class="expense-list__loading">Carregando despesas…</p>
+} @else if (expenses().length === 0) {
   <app-empty-state
     message="Você ainda não cadastrou nenhuma despesa."
     hint="Cadastre as contas que você costuma pagar todo mês, como aluguel ou luz."
@@ -93,7 +110,7 @@
           <span class="expense-list__meta">
             {{ categoryNameById().get(expense.categoryId) }} ·
             {{ accountNameById().get(expense.accountId) }} · Vence em
-            {{ expense.dueDate | date: 'dd/MM/yyyy' }}
+            {{ formatIsoDateAsBr(expense.dueDate) }}
             @if (expense.recurring) {
               · Recorrente
             }
@@ -113,4 +130,3 @@
     }
   </ul>
 }
-

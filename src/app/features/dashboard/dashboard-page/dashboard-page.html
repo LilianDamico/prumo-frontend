@@ -49,7 +49,7 @@
         @for (expense of upcomingExpenses(); track expense.id) {
           <li class="dashboard__upcoming-item" [class.dashboard__upcoming-item--overdue]="expense.overdue">
             <span class="dashboard__upcoming-description">{{ expense.description }}</span>
-            <span class="dashboard__upcoming-date">{{ expense.dueDate | date: 'dd/MM/yyyy' }}</span>
+            <span class="dashboard__upcoming-date">{{ formatIsoDateAsBr(expense.dueDate) }}</span>
             <app-money-value [value]="expense.amount" />
           </li>
         }

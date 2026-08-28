@@ -52,6 +52,7 @@ function expense(overrides: Partial<Expense> = {}): Expense {
     description: 'Aluguel',
     amount: 500,
     dueDate: `${REFERENCE_MONTH}-10`,
+    paymentDate: null,
     categoryId: ESSENTIAL_CATEGORY.id,
     recurring: true,
     status: ExpenseStatus.PENDING,

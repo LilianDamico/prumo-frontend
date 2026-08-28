@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 
@@ -7,6 +6,7 @@ import { DebtStatus, Expense, ExpenseStatus, FinancialPositionStatus } from '../
 import { DebtService } from '../../../core/services/debt.service';
 import { ExpenseService } from '../../../core/services/expense.service';
 import { FinancialPositionService } from '../../../core/services/financial-position.service';
+import { formatIsoDateAsBr } from '../../../core/utils/date.util';
 import { ActionSuggestion } from '../../../shared/components/action-suggestion/action-suggestion';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { MoneyValue } from '../../../shared/components/money-value/money-value';
@@ -51,7 +51,7 @@ interface UpcomingExpenseView {
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [DatePipe, PageHeader, SummaryCard, MoneyValue, StatusBadge, EmptyState, ActionSuggestion],
+  imports: [PageHeader, SummaryCard, MoneyValue, StatusBadge, EmptyState, ActionSuggestion],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +60,9 @@ export class DashboardPage {
   private readonly financialPositionService = inject(FinancialPositionService);
   private readonly expenseService = inject(ExpenseService);
   private readonly debtService = inject(DebtService);
+
+  /** Exposto ao template para exibir `dueDate` sem risco de deslocamento por timezone. */
+  protected readonly formatIsoDateAsBr = formatIsoDateAsBr;
 
   protected readonly position = toSignal(this.financialPositionService.getPosition());
 

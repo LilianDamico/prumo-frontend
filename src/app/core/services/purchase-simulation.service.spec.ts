@@ -41,6 +41,7 @@ function expense(overrides: Partial<Expense> = {}): Expense {
     description: 'Contas fixas',
     amount: 2000,
     dueDate: `${REFERENCE_MONTH}-10`,
+    paymentDate: null,
     categoryId: 'moradia',
     recurring: true,
     status: ExpenseStatus.PENDING,

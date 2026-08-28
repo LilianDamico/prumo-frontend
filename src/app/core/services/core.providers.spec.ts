@@ -5,8 +5,10 @@ import { TestBed } from '@angular/core/testing';
 import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
 import { CORE_SERVICE_PROVIDERS } from './core.providers';
+import { ExpenseService } from './expense.service';
 import { HttpAccountService } from './http/http-account.service';
 import { HttpCategoryService } from './http/http-category.service';
+import { HttpExpenseService } from './http/http-expense.service';
 import { HttpIncomeService } from './http/http-income.service';
 import { IncomeService } from './income.service';
 
@@ -39,5 +41,15 @@ describe('CORE_SERVICE_PROVIDERS', () => {
     const service = TestBed.inject(IncomeService);
 
     expect(service).toBeInstanceOf(HttpIncomeService);
+  });
+
+  it('should resolve ExpenseService to HttpExpenseService', () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), ...CORE_SERVICE_PROVIDERS],
+    });
+
+    const service = TestBed.inject(ExpenseService);
+
+    expect(service).toBeInstanceOf(HttpExpenseService);
   });
 });

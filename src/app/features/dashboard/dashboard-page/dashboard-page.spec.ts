@@ -3,9 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AccountService } from '../../../core/services/account.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { CORE_SERVICE_PROVIDERS } from '../../../core/services/core.providers';
+import { ExpenseService } from '../../../core/services/expense.service';
 import { IncomeService } from '../../../core/services/income.service';
 import { LocalAccountService } from '../../../core/services/local/local-account.service';
 import { LocalCategoryService } from '../../../core/services/local/local-category.service';
+import { LocalExpenseService } from '../../../core/services/local/local-expense.service';
 import { LocalIncomeService } from '../../../core/services/local/local-income.service';
 import { DashboardPage } from './dashboard-page';
 
@@ -18,13 +20,15 @@ describe('DashboardPage', () => {
       imports: [DashboardPage],
       providers: [
         ...CORE_SERVICE_PROVIDERS,
-        // Categorias, contas e receitas continuam locais nos testes de
-        // componente: eles não exercitam a integração HTTP (coberta em
-        // http-category.service.spec.ts/http-account.service.spec.ts/
-        // http-income.service.spec.ts) e não devem depender de rede.
+        // Categorias, contas, receitas e despesas continuam locais nos
+        // testes de componente: eles não exercitam a integração HTTP
+        // (coberta em http-category.service.spec.ts/
+        // http-account.service.spec.ts/http-income.service.spec.ts/
+        // http-expense.service.spec.ts) e não devem depender de rede.
         { provide: CategoryService, useClass: LocalCategoryService },
         { provide: AccountService, useClass: LocalAccountService },
         { provide: IncomeService, useClass: LocalIncomeService },
+        { provide: ExpenseService, useClass: LocalExpenseService },
       ],
     }).compileComponents();
 

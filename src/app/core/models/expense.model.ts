@@ -19,9 +19,15 @@ export interface Expense {
   description: string;
   amount: number;
   dueDate: IsoDateString;
-  /** Preenchido apenas quando a despesa já foi paga. */
-  paymentDate?: IsoDateString;
+  /**
+   * Data em que a despesa foi paga. Espelha diretamente o JSON do backend
+   * (`LocalDate` nullable): `null` quando a despesa não está `PAID`, nunca
+   * `undefined` — evita ambiguidade entre "sem valor" e "campo ausente".
+   */
+  paymentDate: IsoDateString | null;
   categoryId: string;
   recurring: boolean;
   status: ExpenseStatus;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
