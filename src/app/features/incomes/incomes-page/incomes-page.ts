@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -13,6 +12,7 @@ import { Account, Category, CategoryType, Income } from '../../../core/models';
 import { AccountService } from '../../../core/services/account.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { CreateIncomeInput, IncomeService } from '../../../core/services/income.service';
+import { formatIsoDateAsBr } from '../../../core/utils/date.util';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { MoneyValue } from '../../../shared/components/money-value/money-value';
@@ -25,7 +25,6 @@ import { PageHeader } from '../../../shared/components/page-header/page-header';
 @Component({
   selector: 'app-incomes-page',
   imports: [
-    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -48,12 +47,45 @@ export class IncomesPage {
   private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
 
+  /** Exposto ao template para exibir `incomeDate` sem risco de deslocamento por timezone. */
+  readonly formatIsoDateAsBr = formatIsoDateAsBr;
+
   readonly incomes = signal<Income[]>([]);
+  readonly incomesLoading = signal(true);
+
   readonly accounts = signal<Account[]>([]);
+  readonly accountsLoaded = signal(false);
+
   readonly categories = signal<Category[]>([]);
+  readonly categoriesLoaded = signal(false);
 
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
+  /** Conta/categoria da receita em edição, preservadas mesmo se inativas. */
+  private readonly editingAccountId = signal<string | null>(null);
+  private readonly editingCategoryId = signal<string | null>(null);
+
+  /**
+   * Dependências necessárias para operar o formulário (contas e categorias
+   * de renda). Enquanto carregam, o formulário não deve ser exibido como
+   * operacional — evita abrir com selects vazios por corrida assíncrona.
+   */
+  readonly dependenciesLoading = computed(() => !this.accountsLoaded() || !this.categoriesLoaded());
+
+  /** Contas ativas, mais a conta da receita em edição, mesmo que inativa. */
+  readonly selectableAccounts = computed(() => {
+    const editingAccountId = this.editingAccountId();
+    return this.accounts().filter((account) => account.active || account.id === editingAccountId);
+  });
+
+  /** Categorias de renda ativas, mais a categoria da receita em edição, mesmo que inativa. */
+  readonly selectableCategories = computed(() => {
+    const editingCategoryId = this.editingCategoryId();
+    return this.categories().filter((category) => category.active || category.id === editingCategoryId);
+  });
+
+  readonly hasActiveAccounts = computed(() => this.accounts().some((account) => account.active));
+  readonly hasActiveCategories = computed(() => this.categories().some((category) => category.active));
 
   readonly accountNameById = computed(
     () => new Map(this.accounts().map((account) => [account.id, account.name])),
@@ -72,15 +104,24 @@ export class IncomesPage {
   });
 
   constructor() {
-    this.reload();
-    this.categoryService
-      .getByType(CategoryType.INCOME)
-      .subscribe((categories) => this.categories.set(categories));
-    this.accountService.getAll().subscribe((accounts) => this.accounts.set(accounts));
+    this.reloadIncomes();
+    this.categoryService.getByType(CategoryType.INCOME).subscribe((categories) => {
+      this.categories.set(categories);
+      this.categoriesLoaded.set(true);
+    });
+    this.accountService.getAll().subscribe((accounts) => {
+      this.accounts.set(accounts);
+      this.accountsLoaded.set(true);
+    });
   }
 
   startCreate(): void {
+    if (this.dependenciesLoading()) {
+      return;
+    }
     this.editingId.set(null);
+    this.editingAccountId.set(null);
+    this.editingCategoryId.set(null);
     this.form.reset({
       description: '',
       amount: 0,
@@ -94,6 +135,8 @@ export class IncomesPage {
 
   startEdit(income: Income): void {
     this.editingId.set(income.id);
+    this.editingAccountId.set(income.accountId);
+    this.editingCategoryId.set(income.categoryId);
     this.form.reset({
       description: income.description,
       amount: income.amount,
@@ -108,6 +151,8 @@ export class IncomesPage {
   cancelForm(): void {
     this.showForm.set(false);
     this.editingId.set(null);
+    this.editingAccountId.set(null);
+    this.editingCategoryId.set(null);
   }
 
   save(): void {
@@ -145,18 +190,22 @@ export class IncomesPage {
 
     dialogRef.afterClosed().subscribe((confirmed) => {
       if (confirmed) {
-        this.incomeService.remove(income.id).subscribe(() => this.reload());
+        this.incomeService.remove(income.id).subscribe(() => this.reloadIncomes());
       }
     });
   }
 
   private finishSave(): void {
     this.cancelForm();
-    this.reload();
+    this.reloadIncomes();
   }
 
-  private reload(): void {
-    this.incomeService.getAll().subscribe((incomes) => this.incomes.set(incomes));
+  private reloadIncomes(): void {
+    this.incomesLoading.set(true);
+    this.incomeService.getAll().subscribe((incomes) => {
+      this.incomes.set(incomes);
+      this.incomesLoading.set(false);
+    });
   }
 }
 

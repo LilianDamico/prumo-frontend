@@ -4,7 +4,12 @@ import { Income } from '../../models';
 import { generateId } from '../../utils/id.util';
 import { LocalCollectionRepository } from '../storage/local-collection-repository';
 import { LocalStorageService } from '../storage/local-storage.service';
-import { CreateIncomeInput, IncomeService, UpdateIncomeInput } from '../income.service';
+import {
+  CreateIncomeInput,
+  IncomeFilters,
+  IncomeService,
+  UpdateIncomeInput,
+} from '../income.service';
 
 const STORAGE_KEY = 'prumo.incomes';
 
@@ -16,8 +21,8 @@ export class LocalIncomeService extends IncomeService {
     STORAGE_KEY,
   );
 
-  getAll(): Observable<Income[]> {
-    return of(this.repository.getAll());
+  override getAll(filters?: IncomeFilters): Observable<Income[]> {
+    return of(this.applyFilters(this.repository.getAll(), filters));
   }
 
   getById(id: string): Observable<Income | undefined> {
@@ -41,4 +46,35 @@ export class LocalIncomeService extends IncomeService {
     this.repository.remove(id);
     return of(undefined);
   }
+
+  /**
+   * Aplica localmente os mesmos filtros suportados pelo backend
+   * (`accountId`, `categoryId`, `recurring`, `from`, `to`). O período é
+   * inclusivo; a comparação lexicográfica de `AAAA-MM-DD` é segura porque o
+   * formato tem largura fixa e ordem de componentes ano-mês-dia.
+   */
+  private applyFilters(incomes: Income[], filters?: IncomeFilters): Income[] {
+    if (!filters) {
+      return incomes;
+    }
+    return incomes.filter((income) => {
+      if (filters.accountId !== undefined && income.accountId !== filters.accountId) {
+        return false;
+      }
+      if (filters.categoryId !== undefined && income.categoryId !== filters.categoryId) {
+        return false;
+      }
+      if (filters.recurring !== undefined && income.recurring !== filters.recurring) {
+        return false;
+      }
+      if (filters.from !== undefined && income.incomeDate < filters.from) {
+        return false;
+      }
+      if (filters.to !== undefined && income.incomeDate > filters.to) {
+        return false;
+      }
+      return true;
+    });
+  }
 }
+

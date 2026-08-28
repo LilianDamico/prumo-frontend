@@ -1,5 +1,5 @@
 ﻿<app-page-header title="Receitas" subtitle="O dinheiro que entra para você.">
-  <button mat-flat-button actions (click)="startCreate()">
+  <button mat-flat-button actions [disabled]="dependenciesLoading()" (click)="startCreate()">
     <mat-icon aria-hidden="true">add</mat-icon>
     Nova receita
   </button>
@@ -34,8 +34,10 @@
     <mat-form-field appearance="outline">
       <mat-label>Categoria</mat-label>
       <mat-select formControlName="categoryId" required>
-        @for (category of categories(); track category.id) {
-          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        @for (category of selectableCategories(); track category.id) {
+          <mat-option [value]="category.id">
+            {{ category.name }}{{ !category.active ? ' (inativa)' : '' }}
+          </mat-option>
         }
       </mat-select>
       @if (form.controls.categoryId.invalid && form.controls.categoryId.touched) {
@@ -46,8 +48,10 @@
     <mat-form-field appearance="outline">
       <mat-label>Conta</mat-label>
       <mat-select formControlName="accountId" required>
-        @for (account of accounts(); track account.id) {
-          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        @for (account of selectableAccounts(); track account.id) {
+          <mat-option [value]="account.id">
+            {{ account.name }}{{ !account.active ? ' (inativa)' : '' }}
+          </mat-option>
         }
       </mat-select>
       @if (form.controls.accountId.invalid && form.controls.accountId.touched) {
@@ -62,9 +66,19 @@
       <button mat-flat-button type="submit">Salvar</button>
     </div>
   </form>
+} @else if (!dependenciesLoading() && (!hasActiveAccounts() || !hasActiveCategories())) {
+  <p class="income-form__hint">
+    @if (!hasActiveAccounts()) {
+      Cadastre uma conta ativa antes de registrar uma receita.
+    } @else {
+      Cadastre uma categoria de receita ativa antes de registrar uma receita.
+    }
+  </p>
 }
 
-@if (incomes().length === 0) {
+@if (incomesLoading()) {
+  <p class="income-list__loading">Carregando receitas…</p>
+} @else if (incomes().length === 0) {
   <app-empty-state
     message="Você ainda não cadastrou nenhuma receita."
     hint="Comece pelo salário ou por outra entrada de dinheiro que você recebe com frequência."
@@ -79,7 +93,7 @@
           <span class="income-list__meta">
             {{ categoryNameById().get(income.categoryId) }} ·
             {{ accountNameById().get(income.accountId) }} ·
-            {{ income.incomeDate | date: 'dd/MM/yyyy' }}
+            {{ formatIsoDateAsBr(income.incomeDate) }}
             @if (income.recurring) {
               · Recorrente
             }
@@ -98,4 +112,5 @@
     }
   </ul>
 }
+
 

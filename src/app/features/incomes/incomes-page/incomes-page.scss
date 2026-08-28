@@ -8,6 +8,12 @@
   border-radius: 8px;
   background: var(--mat-sys-surface-container);
 
+  &__hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
   &__actions {
     display: flex;
     justify-content: flex-end;
@@ -22,6 +28,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  &__loading {
+    color: var(--mat-sys-on-surface-variant);
+  }
 
   &__item {
     display: flex;

@@ -11,4 +11,6 @@ export interface Income {
   incomeDate: IsoDateString;
   categoryId: string;
   recurring: boolean;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
