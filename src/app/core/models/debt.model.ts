@@ -48,4 +48,6 @@ export interface Debt {
   dueDay: number;
   startDate: IsoDateString;
   status: DebtStatus;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }

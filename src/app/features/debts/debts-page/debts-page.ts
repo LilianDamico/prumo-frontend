@@ -1,6 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,6 +33,57 @@ const STATUS_LEVEL: Record<DebtStatus, StatusLevel> = {
   [DebtStatus.PAID]: 'ok',
   [DebtStatus.DEFAULTED]: 'urgent',
 };
+
+function isFilled(value: unknown): boolean {
+  return value !== null && value !== undefined && value !== '';
+}
+
+/**
+ * Invariante espelhada de `ck_debts_status_balance` (backend): uma dívida
+ * `PAID` exige `currentBalance === 0`; qualquer outro status exige
+ * `currentBalance > 0`. Nunca inventa saldo — apenas bloqueia o envio de um
+ * payload que o backend rejeitaria com 400.
+ */
+function statusBalanceValidator(group: AbstractControl): ValidationErrors | null {
+  const status = group.get('status')?.value;
+  const currentBalance = group.get('currentBalance')?.value;
+  if (!isFilled(currentBalance)) {
+    return null;
+  }
+  if (status === DebtStatus.PAID) {
+    return currentBalance === 0 ? null : { paidRequiresZeroBalance: true };
+  }
+  return currentBalance > 0 ? null : { activeRequiresPositiveBalance: true };
+}
+
+/**
+ * Invariante espelhada de `ck_debts_installments_pair`,
+ * `ck_debts_remaining_le_total` e `ck_debts_status_installments`
+ * (backend): `totalInstallments`/`remainingInstallments` devem ser ambos
+ * nulos ou ambos preenchidos; `remaining <= total`; `PAID` exige
+ * `remaining === 0`; qualquer outro status exige `remaining > 0`.
+ */
+function installmentsPairValidator(group: AbstractControl): ValidationErrors | null {
+  const status = group.get('status')?.value;
+  const total = group.get('totalInstallments')?.value;
+  const remaining = group.get('remainingInstallments')?.value;
+  const hasTotal = isFilled(total);
+  const hasRemaining = isFilled(remaining);
+
+  if (hasTotal !== hasRemaining) {
+    return { installmentsPairMismatch: true };
+  }
+  if (!hasTotal) {
+    return null;
+  }
+  if (remaining > total) {
+    return { remainingExceedsTotal: true };
+  }
+  if (status === DebtStatus.PAID) {
+    return remaining === 0 ? null : { paidRequiresZeroRemaining: true };
+  }
+  return remaining > 0 ? null : { activeRequiresPositiveRemaining: true };
+}
 
 /**
  * Cadastro de dívidas do usuário. A taxa de juros e o pagamento mínimo são
@@ -64,24 +121,28 @@ export class DebtsPage {
   readonly debtStatusLabels = DEBT_STATUS_LABELS;
 
   readonly debts = signal<Debt[]>([]);
+  readonly loading = signal(true);
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
 
-  readonly form = this.formBuilder.nonNullable.group({
-    creditor: ['', Validators.required],
-    description: ['', Validators.required],
-    type: [DebtType.PERSONAL_LOAN, Validators.required],
-    originalAmount: [0, [Validators.required, Validators.min(0.01)]],
-    currentBalance: [0, [Validators.required, Validators.min(0)]],
-    interestRateMonthly: this.formBuilder.control<number | null>(null),
-    minimumPayment: this.formBuilder.control<number | null>(null),
-    installmentAmount: this.formBuilder.control<number | null>(null),
-    totalInstallments: this.formBuilder.control<number | null>(null),
-    remainingInstallments: this.formBuilder.control<number | null>(null),
-    dueDay: [1, [Validators.required, Validators.min(1), Validators.max(31)]],
-    startDate: ['', Validators.required],
-    status: [DebtStatus.ACTIVE, Validators.required],
-  });
+  readonly form = this.formBuilder.nonNullable.group(
+    {
+      creditor: ['', Validators.required],
+      description: ['', Validators.required],
+      type: [DebtType.PERSONAL_LOAN, Validators.required],
+      originalAmount: [0, [Validators.required, Validators.min(0.01)]],
+      currentBalance: [0, [Validators.required, Validators.min(0)]],
+      interestRateMonthly: this.formBuilder.control<number | null>(null, Validators.min(0)),
+      minimumPayment: this.formBuilder.control<number | null>(null, Validators.min(0.01)),
+      installmentAmount: this.formBuilder.control<number | null>(null, Validators.min(0.01)),
+      totalInstallments: this.formBuilder.control<number | null>(null, Validators.min(1)),
+      remainingInstallments: this.formBuilder.control<number | null>(null, Validators.min(0)),
+      dueDay: [1, [Validators.required, Validators.min(1), Validators.max(31)]],
+      startDate: ['', Validators.required],
+      status: [DebtStatus.ACTIVE, Validators.required],
+    },
+    { validators: [statusBalanceValidator, installmentsPairValidator] },
+  );
 
   private readonly formValue = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
@@ -101,6 +162,27 @@ export class DebtsPage {
     this.financialEducationService
       .getBySlug('saldo-devedor')
       .subscribe((topic) => this.outstandingBalanceTopic.set(topic ?? null));
+
+    this.form.controls.status.valueChanges.subscribe((status) => this.handleStatusChange(status));
+  }
+
+  /**
+   * Ao selecionar `PAID`, força `currentBalance = 0` (única forma
+   * compatível com `ck_debts_status_balance`) e, se o par de parcelas já
+   * existir, zera `remainingInstallments`. Nunca inventa valores ao sair de
+   * `PAID`: o formulário simplesmente fica inválido até o usuário informar
+   * um saldo/parcela restante coerente com o novo status.
+   */
+  private handleStatusChange(status: DebtStatus): void {
+    if (status !== DebtStatus.PAID) {
+      return;
+    }
+    this.form.controls.currentBalance.setValue(0);
+    const total = this.form.controls.totalInstallments.value;
+    const remaining = this.form.controls.remainingInstallments.value;
+    if (isFilled(total) && isFilled(remaining)) {
+      this.form.controls.remainingInstallments.setValue(0);
+    }
   }
 
   statusLevel(status: DebtStatus): StatusLevel {
@@ -219,7 +301,14 @@ export class DebtsPage {
   }
 
   private reload(): void {
-    this.debtService.getAll().subscribe((debts) => this.debts.set(debts));
+    this.loading.set(true);
+    this.debtService.getAll().subscribe({
+      next: (debts) => {
+        this.debts.set(debts);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
   }
 }
 

@@ -326,4 +326,27 @@ describe('PurchaseSimulationService', () => {
       expect(output.result.tightestMonth.referenceMonth).toBe(monthTwo);
     }
   });
+
+  it('usa installmentAmount (e não minimumPayment) como compromisso da dívida quando ambos existem', async () => {
+    configureTestBed({
+      incomes: [income({ amount: 4800 })],
+      expenses: [],
+      debts: [debt({ installmentAmount: 500, minimumPayment: 200 })],
+    });
+
+    const service = TestBed.inject(PurchaseSimulationService);
+    const output = await firstValueFrom(
+      service.simulate({
+        amount: 300,
+        paymentMethod: PurchasePaymentMethod.CASH,
+        installmentsCount: 1,
+        firstChargeMonth: REFERENCE_MONTH,
+      }),
+    );
+
+    expect(output.status).toBe('OK');
+    if (output.status === 'OK') {
+      expect(output.result.monthlyImpact[0].projectedCommitments).toBe(500);
+    }
+  });
 });

@@ -153,4 +153,21 @@ describe('PayoffPlanService', () => {
       }
     }
   });
+
+  it('usa installmentAmount (e não minimumPayment) como compromisso mensal quando ambos existem', async () => {
+    configureTestBed({
+      debts: [debt({ id: 'a', currentBalance: 1000, installmentAmount: 500, minimumPayment: 200 })],
+      availableAmount: 0,
+    });
+
+    const service = TestBed.inject(PayoffPlanService);
+    const output = await firstValueFrom(service.getPlan());
+
+    expect(output.status).toBe('OK');
+    if (output.status === 'OK') {
+      for (const simulation of output.result.simulations) {
+        expect(simulation.monthlyAvailableForPayoff).toBe(500);
+      }
+    }
+  });
 });

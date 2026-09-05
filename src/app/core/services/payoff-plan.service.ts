@@ -44,7 +44,7 @@ export class PayoffPlanService {
     }
 
     const totalMinimumPayments = sum(
-      activeDebts.map((debt) => debt.minimumPayment ?? debt.installmentAmount ?? 0),
+      activeDebts.map((debt) => debt.installmentAmount ?? debt.minimumPayment ?? 0),
     );
     const monthlyAvailableForPayoff = totalMinimumPayments + Math.max(extraAvailableAmount, 0);
 
@@ -153,7 +153,7 @@ export class PayoffPlanService {
         if (balance <= 0) {
           continue;
         }
-        const minimumPayment = Math.min(balance, debt.minimumPayment ?? debt.installmentAmount ?? 0);
+        const minimumPayment = Math.min(balance, debt.installmentAmount ?? debt.minimumPayment ?? 0);
         const payment = Math.min(balance, minimumPayment);
         balances.set(debt.id, balance - payment);
         remainingPayment -= payment;

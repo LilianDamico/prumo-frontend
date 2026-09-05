@@ -120,6 +120,18 @@ describe('FinancialPositionService', () => {
     expect(position.availableAmount).toBe(2000 - 300 - 200);
   });
 
+  it('usa installmentAmount (e não minimumPayment) como parcela obrigatória quando ambos existem', async () => {
+    configureTestBed({
+      accounts: [account({ currentBalance: 2000 })],
+      expenses: [],
+      debts: [debt({ installmentAmount: 500, minimumPayment: 200 })],
+    });
+
+    const service = TestBed.inject(FinancialPositionService);
+    const position = await firstValueFrom(service.getPosition(REFERENCE_MONTH));
+    expect(position.totalMandatoryInstallments).toBe(500);
+  });
+
   it('retorna URGENTE quando há despesa essencial atrasada', async () => {
     configureTestBed({
       accounts: [account()],
