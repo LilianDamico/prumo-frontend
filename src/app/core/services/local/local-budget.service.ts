@@ -5,6 +5,7 @@ import { generateId } from '../../utils/id.util';
 import { LocalCollectionRepository } from '../storage/local-collection-repository';
 import { LocalStorageService } from '../storage/local-storage.service';
 import {
+  BudgetFilters,
   BudgetService,
   CreateMonthlyBudgetInput,
   UpdateMonthlyBudgetInput,
@@ -55,8 +56,25 @@ export class LocalBudgetService extends BudgetService {
     STORAGE_KEY,
   );
 
-  getAll(): Observable<MonthlyBudget[]> {
-    return of(this.repository.getAll().map(normalizeBudget));
+  getAll(filters?: BudgetFilters): Observable<MonthlyBudget[]> {
+    const budgets = this.repository.getAll().map(normalizeBudget);
+    if (!filters) {
+      return of(budgets);
+    }
+
+    // referenceMonth é sempre "AAAA-MM": comparação lexicográfica de string
+    // é equivalente à comparação cronológica, sem precisar de `Date`.
+    return of(
+      budgets.filter((budget) => {
+        if (filters.from && budget.referenceMonth < filters.from) {
+          return false;
+        }
+        if (filters.to && budget.referenceMonth > filters.to) {
+          return false;
+        }
+        return true;
+      }),
+    );
   }
 
   getById(id: string): Observable<MonthlyBudget | undefined> {

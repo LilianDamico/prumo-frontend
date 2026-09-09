@@ -19,11 +19,22 @@ export interface CreateMonthlyBudgetInput {
 
 export type UpdateMonthlyBudgetInput = Partial<CreateMonthlyBudgetInput>;
 
+/**
+ * Filtros aceitos por `BudgetService.getAll`, espelhando o range opcional
+ * de meses aceito pelo backend (`GET /budgets?from=yyyy-MM&to=yyyy-MM`).
+ * Ambos os limites são inclusivos.
+ */
+export interface BudgetFilters {
+  from?: IsoMonthString;
+  to?: IsoMonthString;
+}
+
 /** Contrato de acesso ao planejamento financeiro mensal do usuário. */
 export abstract class BudgetService extends CrudService<
   MonthlyBudget,
   CreateMonthlyBudgetInput,
   UpdateMonthlyBudgetInput
 > {
+  abstract override getAll(filters?: BudgetFilters): Observable<MonthlyBudget[]>;
   abstract getByMonth(referenceMonth: IsoMonthString): Observable<MonthlyBudget | undefined>;
 }

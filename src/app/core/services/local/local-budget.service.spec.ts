@@ -195,4 +195,109 @@ describe('LocalBudgetService', () => {
 
     expect(await firstValueFrom(service.getById(created.id))).toBeUndefined();
   });
+
+  it('should return all budgets when getAll is called without filters', async () => {
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-01',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-02',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+
+    const all = await firstValueFrom(service.getAll());
+    expect(all).toHaveLength(2);
+  });
+
+  it('should filter getAll with an inclusive "from"', async () => {
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-03',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-04',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+
+    const result = await firstValueFrom(service.getAll({ from: '2027-04' }));
+    expect(result.map((budget) => budget.referenceMonth)).toEqual(['2027-04']);
+  });
+
+  it('should filter getAll with an inclusive "to"', async () => {
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-05',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-06',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+
+    const result = await firstValueFrom(service.getAll({ to: '2027-05' }));
+    expect(result.map((budget) => budget.referenceMonth)).toEqual(['2027-05']);
+  });
+
+  it('should filter getAll with both "from" and "to" inclusive', async () => {
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-07',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-08',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+    await firstValueFrom(
+      service.create({
+        referenceMonth: '2027-09',
+        expectedIncome: 1000,
+        maximumExpenses: 700,
+        debtPaymentTarget: 0,
+        emergencyReserveTarget: 100,
+      }),
+    );
+
+    const result = await firstValueFrom(service.getAll({ from: '2027-07', to: '2027-08' }));
+    expect(result.map((budget) => budget.referenceMonth).sort()).toEqual(['2027-07', '2027-08']);
+  });
 });

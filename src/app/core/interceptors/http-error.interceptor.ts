@@ -4,6 +4,7 @@ import { catchError, throwError } from 'rxjs';
 
 import { ApiErrorResponse } from '../models';
 import { NotificationService } from '../services/notification.service';
+import { SKIP_NOT_FOUND_NOTIFICATION } from './http-context-tokens';
 
 /**
  * Traduz erros HTTP em mensagens curtas e úteis para o usuário, sem expor
@@ -12,14 +13,17 @@ import { NotificationService } from '../services/notification.service';
  *
  * O erro original continua sendo propagado (via `throwError`) para que os
  * services/componentes possam reagir caso precisem (ex.: manter o form
- * aberto após um 409).
+ * aberto após um 409, ou tratar um 404 esperado como ausência normal de
+ * dado — ver `SKIP_NOT_FOUND_NOTIFICATION`/`HttpBudgetService.getByMonth`).
  */
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const notification = inject(NotificationService);
 
   return next(req).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse) {
+      const skipNotFound = error instanceof HttpErrorResponse && error.status === 404
+        && req.context.get(SKIP_NOT_FOUND_NOTIFICATION);
+      if (error instanceof HttpErrorResponse && !skipNotFound) {
         notification.error(resolveMessage(error));
       }
       return throwError(() => error);
