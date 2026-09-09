@@ -85,7 +85,7 @@ export class FinancialPositionService {
       activeDebts.map((debt) => debt.installmentAmount ?? debt.minimumPayment ?? 0),
     );
 
-    const plannedReserve = budget?.plannedReserve ?? 0;
+    const plannedReserve = budget?.emergencyReserveTarget ?? 0;
     const currentBalance = sum(
       accounts.filter((account) => account.active).map((account) => account.currentBalance),
     );

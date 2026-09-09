@@ -149,7 +149,7 @@ export class PurchaseSimulationService {
     const totalMandatoryInstallments = sum(
       activeDebts.map((debt) => debt.installmentAmount ?? debt.minimumPayment ?? 0),
     );
-    const plannedReserve = budget?.plannedReserve ?? 0;
+    const plannedReserve = budget?.emergencyReserveTarget ?? 0;
 
     const projectedCommitments = totalExpenses + totalMandatoryInstallments + plannedReserve;
     const projectedAvailableBeforePurchase = projectedIncome - projectedCommitments;

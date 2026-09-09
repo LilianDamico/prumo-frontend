@@ -132,6 +132,39 @@ describe('FinancialPositionService', () => {
     expect(position.totalMandatoryInstallments).toBe(500);
   });
 
+  it('subtrai apenas emergencyReserveTarget do Budget, nunca debtPaymentTarget, do availableAmount', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AccountService, useValue: { getAll: () => of([account({ currentBalance: 3000 })]) } },
+        { provide: ExpenseService, useValue: { getAll: () => of([]) } },
+        { provide: IncomeService, useValue: { getAll: () => of([]) } },
+        { provide: DebtService, useValue: { getAll: () => of([]) } },
+        { provide: CategoryService, useValue: { getAll: () => of([ESSENTIAL_CATEGORY]) } },
+        {
+          provide: BudgetService,
+          useValue: {
+            getByMonth: () =>
+              of({
+                id: 'budget-1',
+                referenceMonth: REFERENCE_MONTH,
+                expectedIncome: 5000,
+                maximumExpenses: 3000,
+                debtPaymentTarget: 1000,
+                emergencyReserveTarget: 500,
+              }),
+          },
+        },
+      ],
+    });
+
+    const service = TestBed.inject(FinancialPositionService);
+    const position = await firstValueFrom(service.getPosition(REFERENCE_MONTH));
+
+    expect(position.availableAmount).toBe(3000 - 500);
+    expect(position.availableAmount).not.toBe(3000 - 1500);
+  });
+
   it('retorna URGENTE quando há despesa essencial atrasada', async () => {
     configureTestBed({
       accounts: [account()],

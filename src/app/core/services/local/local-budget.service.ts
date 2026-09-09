@@ -12,6 +12,41 @@ import {
 
 const STORAGE_KEY = 'prumo.budgets';
 
+/**
+ * Formato legado (pré-sincronização com o backend) que pode ainda existir
+ * no `localStorage` de usuários que já usavam o app.
+ */
+interface LegacyMonthlyBudget {
+  id: string;
+  referenceMonth: IsoMonthString;
+  plannedIncome?: number;
+  plannedExpenses?: number;
+  plannedReserve?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Normaliza um registro cru vindo do `localStorage` (novo ou legado) para o
+ * contrato atual de `MonthlyBudget`. Não regrava nada em disco: a
+ * normalização acontece apenas em memória, a cada leitura.
+ */
+function normalizeBudget(raw: MonthlyBudget | LegacyMonthlyBudget): MonthlyBudget {
+  const legacy = raw as LegacyMonthlyBudget;
+  const current = raw as MonthlyBudget;
+
+  return {
+    id: raw.id,
+    referenceMonth: raw.referenceMonth,
+    expectedIncome: current.expectedIncome ?? legacy.plannedIncome ?? 0,
+    maximumExpenses: current.maximumExpenses ?? legacy.plannedExpenses ?? 0,
+    debtPaymentTarget: current.debtPaymentTarget ?? 0,
+    emergencyReserveTarget: current.emergencyReserveTarget ?? legacy.plannedReserve ?? 0,
+    ...(raw.createdAt ? { createdAt: raw.createdAt } : {}),
+    ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {}),
+  };
+}
+
 /** Implementação temporária de `BudgetService` baseada em `localStorage`. */
 @Injectable({ providedIn: 'root' })
 export class LocalBudgetService extends BudgetService {
@@ -21,22 +56,31 @@ export class LocalBudgetService extends BudgetService {
   );
 
   getAll(): Observable<MonthlyBudget[]> {
-    return of(this.repository.getAll());
+    return of(this.repository.getAll().map(normalizeBudget));
   }
 
   getById(id: string): Observable<MonthlyBudget | undefined> {
-    return of(this.repository.getById(id));
+    const found = this.repository.getById(id);
+    return of(found ? normalizeBudget(found) : undefined);
   }
 
   getByMonth(referenceMonth: IsoMonthString): Observable<MonthlyBudget | undefined> {
-    return of(
-      this.repository.getAll().find((budget) => budget.referenceMonth === referenceMonth),
-    );
+    const found = this.repository
+      .getAll()
+      .find((budget) => budget.referenceMonth === referenceMonth);
+    return of(found ? normalizeBudget(found) : undefined);
   }
 
   create(input: CreateMonthlyBudgetInput): Observable<MonthlyBudget> {
+    const duplicate = this.repository
+      .getAll()
+      .find((budget) => budget.referenceMonth === input.referenceMonth);
+    if (duplicate) {
+      throw new Error(`Já existe um orçamento cadastrado para o mês "${input.referenceMonth}".`);
+    }
+
     const budget: MonthlyBudget = { ...input, id: generateId() };
-    return of(this.repository.save(budget));
+    return of(normalizeBudget(this.repository.save(budget)));
   }
 
   update(id: string, changes: UpdateMonthlyBudgetInput): Observable<MonthlyBudget> {
@@ -44,7 +88,20 @@ export class LocalBudgetService extends BudgetService {
     if (!existing) {
       throw new Error(`Orçamento "${id}" não encontrado.`);
     }
-    return of(this.repository.save({ ...existing, ...changes, id }));
+
+    if (changes.referenceMonth) {
+      const conflicting = this.repository
+        .getAll()
+        .find((budget) => budget.referenceMonth === changes.referenceMonth && budget.id !== id);
+      if (conflicting) {
+        throw new Error(
+          `Já existe um orçamento cadastrado para o mês "${changes.referenceMonth}".`,
+        );
+      }
+    }
+
+    const merged: MonthlyBudget = { ...normalizeBudget(existing), ...changes, id };
+    return of(this.repository.save(merged));
   }
 
   remove(id: string): Observable<void> {

@@ -349,4 +349,37 @@ describe('PurchaseSimulationService', () => {
       expect(output.result.monthlyImpact[0].projectedCommitments).toBe(500);
     }
   });
+
+  it('considera apenas emergencyReserveTarget do Budget no compromisso projetado, nunca debtPaymentTarget', async () => {
+    configureTestBed({
+      incomes: [income({ amount: 4800 })],
+      expenses: [expense({ amount: 2000 })],
+      budgets: {
+        [REFERENCE_MONTH]: {
+          id: 'budget-1',
+          referenceMonth: REFERENCE_MONTH,
+          expectedIncome: 4800,
+          maximumExpenses: 2000,
+          debtPaymentTarget: 900,
+          emergencyReserveTarget: 400,
+        },
+      },
+    });
+
+    const service = TestBed.inject(PurchaseSimulationService);
+    const output = await firstValueFrom(
+      service.simulate({
+        amount: 300,
+        paymentMethod: PurchasePaymentMethod.CASH,
+        installmentsCount: 1,
+        firstChargeMonth: REFERENCE_MONTH,
+      }),
+    );
+
+    expect(output.status).toBe('OK');
+    if (output.status === 'OK') {
+      expect(output.result.monthlyImpact[0].projectedCommitments).toBe(2000 + 400);
+      expect(output.result.monthlyImpact[0].projectedCommitments).not.toBe(2000 + 1300);
+    }
+  });
 });
