@@ -98,7 +98,7 @@
             <form class="purchase-form" [formGroup]="purchaseForm" (ngSubmit)="savePurchase()">
               <mat-form-field appearance="outline">
                 <mat-label>Descrição</mat-label>
-                <input matInput formControlName="description" required />
+                <input matInput formControlName="description" maxlength="150" required />
                 @if (purchaseForm.controls.description.invalid && purchaseForm.controls.description.touched) {
                   <mat-error>Informe a descrição da compra.</mat-error>
                 }
@@ -116,7 +116,7 @@
 
               <mat-form-field appearance="outline">
                 <mat-label>Número de parcelas</mat-label>
-                <input matInput type="number" min="1" formControlName="installmentsCount" required />
+                <input matInput type="number" min="1" max="99" formControlName="installmentCount" required />
               </mat-form-field>
 
               <mat-form-field appearance="outline">
@@ -130,7 +130,7 @@
 
               <p class="purchase-form__estimate">
                 <app-money-value [value]="purchaseForm.getRawValue().totalAmount" /> em
-                {{ purchaseForm.getRawValue().installmentsCount }} vezes — aproximadamente
+                {{ purchaseForm.getRawValue().installmentCount }} vezes — aproximadamente
                 <app-money-value [value]="installmentEstimate()" /> por mês
               </p>
 
@@ -154,10 +154,10 @@
                   <div class="purchase-list__info">
                     <span class="purchase-list__description">{{ purchase.description }}</span>
                     <span class="purchase-list__meta">
-                      {{ categoryNameById().get(purchase.categoryId) }} ·
+                      {{ categoryName(purchase.categoryId) }} ·
                       {{ purchase.purchaseDate | date: 'dd/MM/yyyy' }} ·
                       <app-money-value [value]="purchase.totalAmount" /> em
-                      {{ purchase.installmentsCount }}
+                      {{ purchase.installmentCount }}
                       vezes — aproximadamente
                       <app-money-value [value]="purchaseInstallmentAmount(purchase)" /> por mês
                     </span>
@@ -173,5 +173,35 @@
       }
     }
   </ul>
+}
+
+@if (orphanPurchases().length > 0) {
+  <section class="credit-card-orphan-purchases">
+    <h3>Compras sem cartão correspondente</h3>
+    <p class="credit-card-orphan-purchases__hint">
+      Estas compras foram cadastradas localmente e referenciam um cartão que não existe mais nesta lista.
+      Elas continuam guardadas e podem ser excluídas se não forem mais necessárias.
+    </p>
+    <ul class="purchase-list">
+      @for (purchase of orphanPurchases(); track purchase.id) {
+        <li class="purchase-list__item">
+          <div class="purchase-list__info">
+            <span class="purchase-list__description">{{ purchase.description }}</span>
+            <span class="purchase-list__meta">
+              {{ cardName(purchase.creditCardId) }} ·
+              {{ categoryName(purchase.categoryId) }} ·
+              {{ purchase.purchaseDate | date: 'dd/MM/yyyy' }} ·
+              <app-money-value [value]="purchase.totalAmount" /> em
+              {{ purchase.installmentCount }}
+              vezes
+            </span>
+          </div>
+          <button mat-icon-button (click)="removePurchase(purchase)" aria-label="Excluir compra">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
 }
 

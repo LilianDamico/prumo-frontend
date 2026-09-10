@@ -69,6 +69,8 @@ export class CreditCardsPage {
     () => new Map(this.categories().map((category) => [category.id, category.name])),
   );
 
+  readonly cardNameById = computed(() => new Map(this.cards().map((card) => [card.id, card.name])));
+
   readonly cardForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     institution: ['', [Validators.required, Validators.maxLength(100)]],
@@ -79,10 +81,10 @@ export class CreditCardsPage {
   });
 
   readonly purchaseForm = this.formBuilder.nonNullable.group({
-    description: ['', Validators.required],
+    description: ['', [Validators.required, Validators.maxLength(150)]],
     totalAmount: [0, [Validators.required, Validators.min(0.01)]],
     purchaseDate: ['', Validators.required],
-    installmentsCount: [1, [Validators.required, Validators.min(1)]],
+    installmentCount: [1, [Validators.required, Validators.min(1), Validators.max(99)]],
     categoryId: ['', Validators.required],
   });
 
@@ -90,15 +92,31 @@ export class CreditCardsPage {
     initialValue: this.purchaseForm.getRawValue(),
   });
 
+  /** Estimativa de UI (total ÷ parcelas) — o backend é a autoridade para `installmentAmount`. */
   readonly installmentEstimate = computed(() => {
     const value = this.purchaseFormValue();
     const totalAmount = value.totalAmount ?? 0;
-    const installmentsCount = value.installmentsCount ?? 1;
-    return estimateInstallmentAmount(totalAmount, installmentsCount);
+    const installmentCount = value.installmentCount ?? 1;
+    return estimateInstallmentAmount(totalAmount, installmentCount);
+  });
+
+  /** Todas as compras locais, carregadas independentemente do GET de cartões. */
+  readonly allPurchases = signal<CreditCardPurchase[]>([]);
+
+  /**
+   * Compras cujo `creditCardId` não corresponde a nenhum cartão retornado
+   * pelo backend. Isso pode acontecer com dados locais gravados antes da
+   * integração HTTP do CreditCard (IDs antigos, gerados localmente). Essas
+   * compras continuam visíveis aqui — nunca são ocultadas silenciosamente.
+   */
+  readonly orphanPurchases = computed(() => {
+    const cardIds = new Set(this.cards().map((card) => card.id));
+    return this.allPurchases().filter((purchase) => !cardIds.has(purchase.creditCardId));
   });
 
   constructor() {
     this.reloadCards();
+    this.reloadAllPurchases();
     this.categoryService
       .getByType(CategoryType.EXPENSE)
       .subscribe((categories) => this.categories.set(categories));
@@ -190,7 +208,7 @@ export class CreditCardsPage {
       description: '',
       totalAmount: 0,
       purchaseDate: '',
-      installmentsCount: 1,
+      installmentCount: 1,
       categoryId: '',
     });
     this.showPurchaseForm.set(true);
@@ -213,13 +231,14 @@ export class CreditCardsPage {
       description: value.description,
       totalAmount: value.totalAmount,
       purchaseDate: value.purchaseDate,
-      installmentsCount: value.installmentsCount,
+      installmentCount: value.installmentCount,
       categoryId: value.categoryId,
     };
 
     this.purchaseService.create(input).subscribe(() => {
       this.showPurchaseForm.set(false);
       this.reloadPurchases();
+      this.reloadAllPurchases();
     });
   }
 
@@ -233,13 +252,26 @@ export class CreditCardsPage {
 
     dialogRef.afterClosed().subscribe((confirmed) => {
       if (confirmed) {
-        this.purchaseService.remove(purchase.id).subscribe(() => this.reloadPurchases());
+        this.purchaseService.remove(purchase.id).subscribe(() => {
+          this.reloadPurchases();
+          this.reloadAllPurchases();
+        });
       }
     });
   }
 
   purchaseInstallmentAmount(purchase: CreditCardPurchase): number {
-    return estimateInstallmentAmount(purchase.totalAmount, purchase.installmentsCount);
+    return estimateInstallmentAmount(purchase.totalAmount, purchase.installmentCount);
+  }
+
+  /** Nome do cartão para exibição, com fallback tolerante a dados órfãos. */
+  cardName(creditCardId: string): string {
+    return this.cardNameById().get(creditCardId) ?? 'Cartão não disponível';
+  }
+
+  /** Nome da categoria para exibição, com fallback caso não esteja carregada. */
+  categoryName(categoryId: string): string {
+    return this.categoryNameById().get(categoryId) ?? 'Categoria não disponível';
   }
 
   private finishCardSave(): void {
@@ -265,6 +297,15 @@ export class CreditCardsPage {
       return;
     }
     this.purchaseService.getByCard(cardId).subscribe((purchases) => this.purchases.set(purchases));
+  }
+
+  /**
+   * Carrega todas as compras locais, independentemente do carregamento HTTP
+   * de cartões, para que compras órfãs (cartão inexistente no backend)
+   * continuem visíveis em vez de desaparecerem silenciosamente.
+   */
+  private reloadAllPurchases(): void {
+    this.purchaseService.getAll().subscribe((purchases) => this.allPurchases.set(purchases));
   }
 }
 

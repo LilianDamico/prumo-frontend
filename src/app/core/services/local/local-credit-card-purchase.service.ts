@@ -12,6 +12,28 @@ import {
 
 const STORAGE_KEY = 'prumo.credit-card-purchases';
 
+/**
+ * Forma como uma compra pode existir fisicamente no `localStorage`,
+ * incluindo o nome de campo legado `installmentsCount` (anterior à
+ * renomeação para `installmentCount`, alinhada ao backend).
+ */
+type StoredCreditCardPurchase = CreditCardPurchase & { installmentsCount?: number };
+
+/**
+ * Normaliza uma compra lida do `localStorage` para o contrato atual.
+ * Registros antigos gravados com `installmentsCount` continuam legíveis
+ * (o valor é lido como `installmentCount` na leitura). Não regrava o
+ * `localStorage`, não fabrica timestamps e preserva `installmentAmount`
+ * apenas se já existir no registro (nunca o calcula aqui).
+ */
+function normalizePurchase(raw: StoredCreditCardPurchase): CreditCardPurchase {
+  const { installmentsCount, ...purchase } = raw;
+  return {
+    ...purchase,
+    installmentCount: purchase.installmentCount ?? installmentsCount ?? 0,
+  };
+}
+
 /** Implementação temporária de `CreditCardPurchaseService` baseada em `localStorage`. */
 @Injectable({ providedIn: 'root' })
 export class LocalCreditCardPurchaseService extends CreditCardPurchaseService {
@@ -21,15 +43,20 @@ export class LocalCreditCardPurchaseService extends CreditCardPurchaseService {
   );
 
   getAll(): Observable<CreditCardPurchase[]> {
-    return of(this.repository.getAll());
+    return of((this.repository.getAll() as StoredCreditCardPurchase[]).map(normalizePurchase));
   }
 
   getByCard(creditCardId: string): Observable<CreditCardPurchase[]> {
-    return of(this.repository.getAll().filter((purchase) => purchase.creditCardId === creditCardId));
+    return of(
+      (this.repository.getAll() as StoredCreditCardPurchase[])
+        .map(normalizePurchase)
+        .filter((purchase) => purchase.creditCardId === creditCardId),
+    );
   }
 
   getById(id: string): Observable<CreditCardPurchase | undefined> {
-    return of(this.repository.getById(id));
+    const existing = this.repository.getById(id) as StoredCreditCardPurchase | undefined;
+    return of(existing ? normalizePurchase(existing) : undefined);
   }
 
   create(input: CreateCreditCardPurchaseInput): Observable<CreditCardPurchase> {
@@ -38,11 +65,12 @@ export class LocalCreditCardPurchaseService extends CreditCardPurchaseService {
   }
 
   update(id: string, changes: UpdateCreditCardPurchaseInput): Observable<CreditCardPurchase> {
-    const existing = this.repository.getById(id);
+    const existing = this.repository.getById(id) as StoredCreditCardPurchase | undefined;
     if (!existing) {
       throw new Error(`Compra "${id}" não encontrada.`);
     }
-    return of(this.repository.save({ ...existing, ...changes, id }));
+    const normalized = normalizePurchase(existing);
+    return of(this.repository.save({ ...normalized, ...changes, id }));
   }
 
   remove(id: string): Observable<void> {

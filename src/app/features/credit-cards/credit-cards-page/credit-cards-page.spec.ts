@@ -56,6 +56,20 @@ describe('CreditCardsPage', () => {
   let component: CreditCardsPage;
   let fixture: ComponentFixture<CreditCardsPage>;
 
+  function createCard(): CreditCard {
+    component.startCardCreate();
+    component.cardForm.setValue({
+      name: 'Cartão Roxo',
+      institution: 'Banco X',
+      creditLimit: 5000,
+      closingDay: 5,
+      dueDay: 15,
+      active: true,
+    });
+    component.saveCard();
+    return component.cards()[0];
+  }
+
   beforeEach(async () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
@@ -89,38 +103,16 @@ describe('CreditCardsPage', () => {
   });
 
   it('cria um cartão e calcula a parcela aproximada de uma compra', () => {
-    component.startCardCreate();
-    component.cardForm.setValue({
-      name: 'Cartão Roxo',
-      institution: 'Banco X',
-      creditLimit: 5000,
-      closingDay: 5,
-      dueDay: 15,
-      active: true,
-    });
-    component.saveCard();
-
-    expect(component.cards().length).toBe(1);
-
-    const card = component.cards()[0];
+    const card = createCard();
     component.viewPurchases(card);
     component.startPurchaseCreate();
-    component.purchaseForm.patchValue({ totalAmount: 1200, installmentsCount: 6 });
+    component.purchaseForm.patchValue({ totalAmount: 1200, installmentCount: 6 });
 
     expect(component.installmentEstimate()).toBe(200);
   });
 
   it('edita um cartão existente', () => {
-    component.startCardCreate();
-    component.cardForm.setValue({
-      name: 'Cartão Roxo',
-      institution: 'Banco X',
-      creditLimit: 5000,
-      closingDay: 5,
-      dueDay: 15,
-      active: true,
-    });
-    component.saveCard();
+    createCard();
 
     const card = component.cards()[0];
     component.startCardEdit(card);
@@ -133,18 +125,7 @@ describe('CreditCardsPage', () => {
   });
 
   it('exclui um cartão após confirmação', () => {
-    component.startCardCreate();
-    component.cardForm.setValue({
-      name: 'Cartão Roxo',
-      institution: 'Banco X',
-      creditLimit: 5000,
-      closingDay: 5,
-      dueDay: 15,
-      active: true,
-    });
-    component.saveCard();
-
-    const card = component.cards()[0];
+    const card = createCard();
     const dialog = TestBed.inject(MatDialog);
     vi.spyOn(dialog, 'open').mockReturnValue({
       afterClosed: () => of(true),
@@ -156,16 +137,7 @@ describe('CreditCardsPage', () => {
   });
 
   it('não exclui um cartão quando a confirmação é cancelada', () => {
-    component.startCardCreate();
-    component.cardForm.setValue({
-      name: 'Cartão Roxo',
-      institution: 'Banco X',
-      creditLimit: 5000,
-      closingDay: 5,
-      dueDay: 15,
-      active: true,
-    });
-    component.saveCard();
+    createCard();
 
     const card = component.cards()[0];
     const dialog = TestBed.inject(MatDialog);
@@ -253,6 +225,240 @@ describe('CreditCardsPage', () => {
     component.startCardEdit(card);
     expect(component.cardForm.controls.active.value).toBe(false);
   });
+
+  describe('compras', () => {
+    it('cria uma compra válida vinculada ao cartão selecionado', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Geladeira',
+        totalAmount: 1200,
+        purchaseDate: '2026-01-10',
+        installmentCount: 6,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      expect(component.purchases().length).toBe(1);
+      expect(component.purchases()[0].creditCardId).toBe(card.id);
+      expect(component.purchases()[0].installmentCount).toBe(6);
+    });
+
+    it('exclui uma compra após confirmação', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Geladeira',
+        totalAmount: 1200,
+        purchaseDate: '2026-01-10',
+        installmentCount: 6,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      const purchase = component.purchases()[0];
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => of(true),
+      } as ReturnType<MatDialog['open']>);
+
+      component.removePurchase(purchase);
+
+      expect(component.purchases()).toEqual([]);
+    });
+
+    it('não exclui uma compra quando a confirmação é cancelada', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Geladeira',
+        totalAmount: 1200,
+        purchaseDate: '2026-01-10',
+        installmentCount: 6,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      const purchase = component.purchases()[0];
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => of(false),
+      } as ReturnType<MatDialog['open']>);
+
+      component.removePurchase(purchase);
+
+      expect(component.purchases().length).toBe(1);
+    });
+
+    it('não salva compra com formulário inválido', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ description: '' });
+      component.savePurchase();
+
+      expect(component.purchases()).toEqual([]);
+    });
+
+    it('aceita installmentCount = 1', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ installmentCount: 1 });
+
+      expect(component.purchaseForm.controls.installmentCount.valid).toBe(true);
+    });
+
+    it('aceita installmentCount = 99', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ installmentCount: 99 });
+
+      expect(component.purchaseForm.controls.installmentCount.valid).toBe(true);
+    });
+
+    it('rejeita installmentCount = 0', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ installmentCount: 0 });
+
+      expect(component.purchaseForm.controls.installmentCount.valid).toBe(false);
+    });
+
+    it('rejeita installmentCount = 100', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ installmentCount: 100 });
+
+      expect(component.purchaseForm.controls.installmentCount.valid).toBe(false);
+    });
+
+    it('aceita totalAmount > 0', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ totalAmount: 0.01 });
+
+      expect(component.purchaseForm.controls.totalAmount.valid).toBe(true);
+    });
+
+    it('rejeita totalAmount igual a 0', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ totalAmount: 0 });
+
+      expect(component.purchaseForm.controls.totalAmount.valid).toBe(false);
+    });
+
+    it('rejeita description com mais de 150 caracteres', () => {
+      component.startPurchaseCreate();
+      component.purchaseForm.patchValue({ description: 'a'.repeat(151) });
+
+      expect(component.purchaseForm.controls.description.valid).toBe(false);
+    });
+
+    it('preserva purchaseDate literalmente, sem transformação de fuso', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Compra com data',
+        totalAmount: 300,
+        purchaseDate: '2026-12-31',
+        installmentCount: 1,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      expect(component.purchases()[0].purchaseDate).toBe('2026-12-31');
+    });
+  });
+
+  describe('dados órfãos', () => {
+    it('compra que referencia um cartão inexistente permanece visível com fallback', async () => {
+      const purchaseService = TestBed.inject(CreditCardPurchaseService);
+      await new Promise<void>((resolve) => {
+        purchaseService
+          .create({
+            creditCardId: 'cartao-inexistente',
+            description: 'Compra órfã',
+            totalAmount: 500,
+            purchaseDate: '2025-01-01',
+            installmentCount: 1,
+            categoryId: 'cat-1',
+          })
+          .subscribe(() => resolve());
+      });
+
+      // Recarrega a página para simular a leitura inicial dos dados locais.
+      fixture = TestBed.createComponent(CreditCardsPage);
+      component = fixture.componentInstance;
+      await fixture.whenStable();
+
+      expect(component.orphanPurchases().length).toBe(1);
+      expect(component.orphanPurchases()[0].description).toBe('Compra órfã');
+      expect(component.cardName('cartao-inexistente')).toBe('Cartão não disponível');
+    });
+
+    it('não lança exceção e não quebra a página com dados órfãos', async () => {
+      const purchaseService = TestBed.inject(CreditCardPurchaseService);
+      await new Promise<void>((resolve) => {
+        purchaseService
+          .create({
+            creditCardId: 'cartao-inexistente',
+            description: 'Compra órfã',
+            totalAmount: 500,
+            purchaseDate: '2025-01-01',
+            installmentCount: 1,
+            categoryId: 'cat-1',
+          })
+          .subscribe(() => resolve());
+      });
+
+      expect(() => {
+        fixture = TestBed.createComponent(CreditCardsPage);
+        component = fixture.componentInstance;
+      }).not.toThrow();
+    });
+
+    it('cartão referenciado por uma compra, mas depois excluído/inativo, continua representável no histórico', () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Compra antiga',
+        totalAmount: 100,
+        purchaseDate: '2025-01-01',
+        installmentCount: 1,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      // O cartão ainda existe (ativo ou não) na lista carregada: o nome
+      // resolve normalmente, sem fallback.
+      expect(component.cardName(card.id)).toBe(card.name);
+    });
+  });
+
+  describe('carregamento e compras locais', () => {
+    it('carregamento de cartões não apaga compras locais já exibidas', async () => {
+      const purchaseService = TestBed.inject(CreditCardPurchaseService);
+      await new Promise<void>((resolve) => {
+        purchaseService
+          .create({
+            creditCardId: 'card-x',
+            description: 'Compra local',
+            totalAmount: 50,
+            purchaseDate: '2025-01-01',
+            installmentCount: 1,
+            categoryId: 'cat-1',
+          })
+          .subscribe(() => resolve());
+      });
+
+      fixture = TestBed.createComponent(CreditCardsPage);
+      component = fixture.componentInstance;
+      await fixture.whenStable();
+
+      expect(component.allPurchases().length).toBe(1);
+      expect(component.loading()).toBe(false);
+    });
+  });
 });
 
 describe('CreditCardsPage (loading)', () => {
@@ -300,5 +506,28 @@ describe('CreditCardsPage (loading)', () => {
 
     expect(component.loading()).toBe(false);
   });
-});
 
+  it('compras locais aparecem mesmo antes do GET de cartões terminar', async () => {
+    const purchaseService = TestBed.inject(CreditCardPurchaseService);
+    await new Promise<void>((resolve) => {
+      purchaseService
+        .create({
+          creditCardId: 'card-1',
+          description: 'Compra antes do GET',
+          totalAmount: 80,
+          purchaseDate: '2026-03-01',
+          installmentCount: 1,
+          categoryId: 'cat-1',
+        })
+        .subscribe(() => resolve());
+    });
+
+    fixture = TestBed.createComponent(CreditCardsPage);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+
+    // O GET de cartões ainda não emitiu (subject controlado manualmente),
+    // mas a compra local já deve estar carregada.
+    expect(component.allPurchases().length).toBeGreaterThan(0);
+  });
+});

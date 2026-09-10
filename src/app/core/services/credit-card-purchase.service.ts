@@ -1,8 +1,20 @@
 import { Observable } from 'rxjs';
-import { CreditCardPurchase } from '../models';
+import { CreditCardPurchase, IsoDateString } from '../models';
 import { CrudService } from './crud.service';
 
-export type CreateCreditCardPurchaseInput = Omit<CreditCardPurchase, 'id'>;
+/**
+ * Contrato de criação alinhado ao backend: nunca inclui `id`, `installmentAmount`
+ * (somente-resposta, calculado pelo backend) nem `createdAt`/`updatedAt`.
+ */
+export interface CreateCreditCardPurchaseInput {
+  creditCardId: string;
+  categoryId: string;
+  description: string;
+  purchaseDate: IsoDateString;
+  totalAmount: number;
+  installmentCount: number;
+}
+
 export type UpdateCreditCardPurchaseInput = Partial<CreateCreditCardPurchaseInput>;
 
 /** Contrato de acesso às compras feitas em cartões de crédito. */

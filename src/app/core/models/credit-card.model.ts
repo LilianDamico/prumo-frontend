@@ -24,16 +24,27 @@ export interface CreditCard {
 
 /**
  * Compra feita em um cartão de crédito, à vista ou parcelada.
+ *
+ * Reflete o contrato `CreditCardPurchaseResponse` do backend: id,
+ * creditCardId, categoryId, description, purchaseDate, totalAmount,
+ * installmentCount, installmentAmount (calculado), createdAt, updatedAt.
+ * `installmentAmount` é somente-resposta (calculado pelo backend como
+ * `totalAmount / installmentCount`, HALF_UP, escala 2) — nunca é
+ * calculado nem persistido pelo frontend como fonte de verdade.
  */
 export interface CreditCardPurchase {
   readonly id: string;
   creditCardId: string;
-  description: string;
-  totalAmount: number;
-  purchaseDate: IsoDateString;
-  /** 1 para compras à vista. */
-  installmentsCount: number;
   categoryId: string;
+  description: string;
+  purchaseDate: IsoDateString;
+  totalAmount: number;
+  /** 1 para compras à vista. Backend aceita de 1 a 99. */
+  installmentCount: number;
+  /** Somente-resposta: calculado pelo backend, nunca enviado pelo cliente. */
+  readonly installmentAmount?: number;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
 
 /**
