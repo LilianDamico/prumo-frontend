@@ -2,6 +2,11 @@ import { IsoDateString, IsoMonthString } from './common.model';
 
 /**
  * Cartão de crédito cadastrado pelo usuário.
+ *
+ * Reflete o contrato `CreditCardResponse` do backend Spring Boot: id, name,
+ * institution, creditLimit, closingDay, dueDay, active, createdAt, updatedAt
+ * (ISO-8601). Não existe `availableLimit`/`accountId` no backend — este
+ * domínio não calcula limite disponível nem se relaciona com `Account`.
  */
 export interface CreditCard {
   readonly id: string;
@@ -13,6 +18,8 @@ export interface CreditCard {
   /** Dia do mês em que a fatura vence (1 a 31). */
   dueDay: number;
   active: boolean;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
 
 /**

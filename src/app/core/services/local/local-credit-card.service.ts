@@ -6,6 +6,7 @@ import { LocalCollectionRepository } from '../storage/local-collection-repositor
 import { LocalStorageService } from '../storage/local-storage.service';
 import {
   CreateCreditCardInput,
+  CreditCardFilters,
   CreditCardService,
   UpdateCreditCardInput,
 } from '../credit-card.service';
@@ -20,8 +21,18 @@ export class LocalCreditCardService extends CreditCardService {
     STORAGE_KEY,
   );
 
-  getAll(): Observable<CreditCard[]> {
-    return of(this.repository.getAll());
+  /**
+   * `filters.active` precisa ser comparado explicitamente contra
+   * `undefined` — `false` é um valor de filtro válido (cartões inativos) e
+   * não pode ser tratado como "ausente" (`if (filters?.active)` excluiria
+   * indevidamente esse caso).
+   */
+  getAll(filters?: CreditCardFilters): Observable<CreditCard[]> {
+    const all = this.repository.getAll();
+    if (filters?.active === undefined) {
+      return of(all);
+    }
+    return of(all.filter((creditCard) => creditCard.active === filters.active));
   }
 
   getById(id: string): Observable<CreditCard | undefined> {

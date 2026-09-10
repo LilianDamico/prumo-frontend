@@ -55,6 +55,7 @@ export class CreditCardsPage {
   private readonly formBuilder = inject(FormBuilder);
 
   readonly cards = signal<CreditCard[]>([]);
+  readonly loading = signal(true);
   readonly categories = signal<Category[]>([]);
 
   readonly showCardForm = signal(false);
@@ -69,8 +70,8 @@ export class CreditCardsPage {
   );
 
   readonly cardForm = this.formBuilder.nonNullable.group({
-    name: ['', Validators.required],
-    institution: ['', Validators.required],
+    name: ['', [Validators.required, Validators.maxLength(100)]],
+    institution: ['', [Validators.required, Validators.maxLength(100)]],
     creditLimit: [0, [Validators.required, Validators.min(0)]],
     closingDay: [1, [Validators.required, Validators.min(1), Validators.max(31)]],
     dueDay: [10, [Validators.required, Validators.min(1), Validators.max(31)]],
@@ -247,7 +248,14 @@ export class CreditCardsPage {
   }
 
   private reloadCards(): void {
-    this.creditCardService.getAll().subscribe((cards) => this.cards.set(cards));
+    this.loading.set(true);
+    this.creditCardService.getAll().subscribe({
+      next: (cards) => {
+        this.cards.set(cards);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
   }
 
   private reloadPurchases(): void {

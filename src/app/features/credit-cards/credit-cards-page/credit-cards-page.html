@@ -9,7 +9,7 @@
   <form class="credit-card-form" [formGroup]="cardForm" (ngSubmit)="saveCard()">
     <mat-form-field appearance="outline">
       <mat-label>Nome</mat-label>
-      <input matInput formControlName="name" required />
+      <input matInput formControlName="name" maxlength="100" required />
       @if (cardForm.controls.name.invalid && cardForm.controls.name.touched) {
         <mat-error>Informe o nome do cartão.</mat-error>
       }
@@ -17,7 +17,7 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Banco</mat-label>
-      <input matInput formControlName="institution" required />
+      <input matInput formControlName="institution" maxlength="100" required />
       @if (cardForm.controls.institution.invalid && cardForm.controls.institution.touched) {
         <mat-error>Informe o banco.</mat-error>
       }
@@ -47,7 +47,9 @@
   </form>
 }
 
-@if (cards().length === 0) {
+@if (loading()) {
+  <p class="credit-card-list__loading">Carregando cartões…</p>
+} @else if (cards().length === 0) {
   <app-empty-state
     message="Você ainda não cadastrou nenhum cartão."
     hint="Cadastre seus cartões de crédito para acompanhar as compras parceladas."
