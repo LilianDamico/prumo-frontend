@@ -10,23 +10,23 @@ import { ExpenseService } from './expense.service';
 import { HttpAccountService } from './http/http-account.service';
 import { HttpBudgetService } from './http/http-budget.service';
 import { HttpCategoryService } from './http/http-category.service';
+import { HttpCreditCardPurchaseService } from './http/http-credit-card-purchase.service';
 import { HttpCreditCardService } from './http/http-credit-card.service';
 import { HttpDebtService } from './http/http-debt.service';
 import { HttpExpenseService } from './http/http-expense.service';
 import { HttpIncomeService } from './http/http-income.service';
 import { IncomeService } from './income.service';
-import { LocalCreditCardPurchaseService } from './local/local-credit-card-purchase.service';
 
 /**
  * Liga cada contrato de serviço de domínio à sua implementação atual.
  * `AccountService`, `CategoryService`, `IncomeService`, `ExpenseService`,
- * `DebtService`, `BudgetService` e `CreditCardService` já usam o backend
- * Spring Boot via `HttpAccountService`/`HttpCategoryService`/
- * `HttpIncomeService`/`HttpExpenseService`/`HttpDebtService`/
- * `HttpBudgetService`/`HttpCreditCardService`; `CreditCardPurchaseService`
- * continua em `localStorage` até ser integrado em etapa futura. Quando
- * isso acontecer, basta trocar o `useClass` — nenhum componente precisará
- * mudar.
+ * `DebtService`, `BudgetService`, `CreditCardService` e
+ * `CreditCardPurchaseService` já usam o backend Spring Boot via
+ * `HttpAccountService`/`HttpCategoryService`/`HttpIncomeService`/
+ * `HttpExpenseService`/`HttpDebtService`/`HttpBudgetService`/
+ * `HttpCreditCardService`/`HttpCreditCardPurchaseService`. Quando um novo
+ * domínio for integrado, basta trocar o `useClass` — nenhum componente
+ * precisará mudar.
  */
 export const CORE_SERVICE_PROVIDERS: Provider[] = [
   { provide: AccountService, useClass: HttpAccountService },
@@ -35,7 +35,7 @@ export const CORE_SERVICE_PROVIDERS: Provider[] = [
   { provide: ExpenseService, useClass: HttpExpenseService },
   { provide: DebtService, useClass: HttpDebtService },
   { provide: CreditCardService, useClass: HttpCreditCardService },
-  { provide: CreditCardPurchaseService, useClass: LocalCreditCardPurchaseService },
+  { provide: CreditCardPurchaseService, useClass: HttpCreditCardPurchaseService },
   { provide: BudgetService, useClass: HttpBudgetService },
 ];
 

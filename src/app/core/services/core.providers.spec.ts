@@ -13,6 +13,7 @@ import { ExpenseService } from './expense.service';
 import { HttpAccountService } from './http/http-account.service';
 import { HttpBudgetService } from './http/http-budget.service';
 import { HttpCategoryService } from './http/http-category.service';
+import { HttpCreditCardPurchaseService } from './http/http-credit-card-purchase.service';
 import { HttpCreditCardService } from './http/http-credit-card.service';
 import { HttpDebtService } from './http/http-debt.service';
 import { HttpExpenseService } from './http/http-expense.service';
@@ -95,13 +96,14 @@ describe('CORE_SERVICE_PROVIDERS', () => {
     expect(service).not.toBeInstanceOf(LocalCreditCardService);
   });
 
-  it('should resolve CreditCardPurchaseService to LocalCreditCardPurchaseService', () => {
+  it('should resolve CreditCardPurchaseService to HttpCreditCardPurchaseService', () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), ...CORE_SERVICE_PROVIDERS],
     });
 
     const service = TestBed.inject(CreditCardPurchaseService);
 
-    expect(service).toBeInstanceOf(LocalCreditCardPurchaseService);
+    expect(service).toBeInstanceOf(HttpCreditCardPurchaseService);
+    expect(service).not.toBeInstanceOf(LocalCreditCardPurchaseService);
   });
 });

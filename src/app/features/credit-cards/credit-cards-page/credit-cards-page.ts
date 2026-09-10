@@ -55,7 +55,7 @@ export class CreditCardsPage {
   private readonly formBuilder = inject(FormBuilder);
 
   readonly cards = signal<CreditCard[]>([]);
-  readonly loading = signal(true);
+  readonly cardsLoading = signal(true);
   readonly categories = signal<Category[]>([]);
 
   readonly showCardForm = signal(false);
@@ -63,6 +63,7 @@ export class CreditCardsPage {
 
   readonly selectedCardId = signal<string | null>(null);
   readonly purchases = signal<CreditCardPurchase[]>([]);
+  readonly purchasesLoading = signal(false);
   readonly showPurchaseForm = signal(false);
 
   readonly categoryNameById = computed(
@@ -100,14 +101,16 @@ export class CreditCardsPage {
     return estimateInstallmentAmount(totalAmount, installmentCount);
   });
 
-  /** Todas as compras locais, carregadas independentemente do GET de cartões. */
+  /** Todas as compras (HTTP), carregadas independentemente do GET de cartões. */
   readonly allPurchases = signal<CreditCardPurchase[]>([]);
 
   /**
    * Compras cujo `creditCardId` não corresponde a nenhum cartão retornado
-   * pelo backend. Isso pode acontecer com dados locais gravados antes da
-   * integração HTTP do CreditCard (IDs antigos, gerados localmente). Essas
-   * compras continuam visíveis aqui — nunca são ocultadas silenciosamente.
+   * pelo backend. Com a FK do backend, isso não deveria mais ocorrer para
+   * compras criadas via HTTP — mas a tolerância defensiva é preservada
+   * (ex.: dados legados de `localStorage` de antes desta integração, ou uma
+   * futura divergência de dados). Essas compras continuam visíveis aqui —
+   * nunca são ocultadas silenciosamente.
    */
   readonly orphanPurchases = computed(() => {
     const cardIds = new Set(this.cards().map((card) => card.id));
@@ -264,6 +267,16 @@ export class CreditCardsPage {
     return estimateInstallmentAmount(purchase.totalAmount, purchase.installmentCount);
   }
 
+  /**
+   * Valor de parcela para exibição: prioriza `installmentAmount` vindo do
+   * backend (autoridade) quando disponível; só usa a estimativa local
+   * (`totalAmount ÷ installmentCount`) para registros que ainda não têm
+   * esse campo na resposta.
+   */
+  displayInstallmentAmount(purchase: CreditCardPurchase): number {
+    return purchase.installmentAmount ?? this.purchaseInstallmentAmount(purchase);
+  }
+
   /** Nome do cartão para exibição, com fallback tolerante a dados órfãos. */
   cardName(creditCardId: string): string {
     return this.cardNameById().get(creditCardId) ?? 'Cartão não disponível';
@@ -280,13 +293,13 @@ export class CreditCardsPage {
   }
 
   private reloadCards(): void {
-    this.loading.set(true);
+    this.cardsLoading.set(true);
     this.creditCardService.getAll().subscribe({
       next: (cards) => {
         this.cards.set(cards);
-        this.loading.set(false);
+        this.cardsLoading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => this.cardsLoading.set(false),
     });
   }
 
@@ -296,13 +309,20 @@ export class CreditCardsPage {
       this.purchases.set([]);
       return;
     }
-    this.purchaseService.getByCard(cardId).subscribe((purchases) => this.purchases.set(purchases));
+    this.purchasesLoading.set(true);
+    this.purchaseService.getByCard(cardId).subscribe({
+      next: (purchases) => {
+        this.purchases.set(purchases);
+        this.purchasesLoading.set(false);
+      },
+      error: () => this.purchasesLoading.set(false),
+    });
   }
 
   /**
-   * Carrega todas as compras locais, independentemente do carregamento HTTP
-   * de cartões, para que compras órfãs (cartão inexistente no backend)
-   * continuem visíveis em vez de desaparecerem silenciosamente.
+   * Carrega todas as compras (HTTP), independentemente do carregamento de
+   * cartões, para que compras já existentes continuem aparecendo mesmo
+   * que o GET de cartões ainda esteja em andamento (ou vice-versa).
    */
   private reloadAllPurchases(): void {
     this.purchaseService.getAll().subscribe((purchases) => this.allPurchases.set(purchases));

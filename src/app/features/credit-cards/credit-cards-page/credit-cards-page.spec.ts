@@ -4,10 +4,15 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Observable, Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 
-import { CreditCard } from '../../../core/models';
+import { CreditCard, CreditCardPurchase } from '../../../core/models';
 import { CategoryService } from '../../../core/services/category.service';
 import { CORE_SERVICE_PROVIDERS } from '../../../core/services/core.providers';
-import { CreditCardPurchaseService } from '../../../core/services/credit-card-purchase.service';
+import {
+  CreateCreditCardPurchaseInput,
+  CreditCardPurchaseFilters,
+  CreditCardPurchaseService,
+  UpdateCreditCardPurchaseInput,
+} from '../../../core/services/credit-card-purchase.service';
 import {
   CreateCreditCardInput,
   CreditCardFilters,
@@ -32,6 +37,19 @@ function creditCard(overrides: Partial<CreditCard> = {}): CreditCard {
   };
 }
 
+function creditCardPurchase(overrides: Partial<CreditCardPurchase> = {}): CreditCardPurchase {
+  return {
+    id: 'purchase-1',
+    creditCardId: 'card-1',
+    categoryId: 'cat-1',
+    description: 'Geladeira',
+    purchaseDate: '2026-01-10',
+    totalAmount: 1200,
+    installmentCount: 6,
+    ...overrides,
+  };
+}
+
 /** Dublê de `CreditCardService` cujas emissões de `getAll` são controladas manualmente pelo teste. */
 class ControlledCreditCardService extends CreditCardService {
   readonly subject = new Subject<CreditCard[]>();
@@ -45,6 +63,40 @@ class ControlledCreditCardService extends CreditCardService {
     throw new Error('not implemented');
   }
   override update(_id: string, _changes: UpdateCreditCardInput): Observable<CreditCard> {
+    throw new Error('not implemented');
+  }
+  override remove(): Observable<void> {
+    throw new Error('not implemented');
+  }
+}
+
+/**
+ * Dublê de `CreditCardPurchaseService` com emissões controladas
+ * manualmente. Distingue a consulta "todas as compras" (`allSubject`) da
+ * consulta "compras de um cartão" (`byCardSubject`), assim como o backend
+ * real diferencia esses dois usos do mesmo endpoint filtrado por query
+ * param — permitindo simular as duas ordens de chegada possíveis entre o
+ * GET de cartões e os GETs de compras.
+ */
+class ControlledCreditCardPurchaseService extends CreditCardPurchaseService {
+  readonly allSubject = new Subject<CreditCardPurchase[]>();
+  readonly byCardSubject = new Subject<CreditCardPurchase[]>();
+  override getAll(filters?: CreditCardPurchaseFilters): Observable<CreditCardPurchase[]> {
+    if (filters?.creditCardId) {
+      return this.byCardSubject.asObservable();
+    }
+    return this.allSubject.asObservable();
+  }
+  override getByCard(creditCardId: string): Observable<CreditCardPurchase[]> {
+    return this.getAll({ creditCardId });
+  }
+  override getById(): Observable<CreditCardPurchase | undefined> {
+    throw new Error('not implemented');
+  }
+  override create(_input: CreateCreditCardPurchaseInput): Observable<CreditCardPurchase> {
+    throw new Error('not implemented');
+  }
+  override update(_id: string, _changes: UpdateCreditCardPurchaseInput): Observable<CreditCardPurchase> {
     throw new Error('not implemented');
   }
   override remove(): Observable<void> {
@@ -77,10 +129,13 @@ describe('CreditCardsPage', () => {
       providers: [
         ...CORE_SERVICE_PROVIDERS,
         provideNoopAnimations(),
-        // A tela é testada com o `CreditCardService` local: os testes de
-        // componente não exercitam a integração HTTP (coberta em
-        // http-credit-card.service.spec.ts) e não devem depender de rede.
+        // A tela é testada com os serviços locais: os testes de componente
+        // não exercitam a integração HTTP (coberta em
+        // http-credit-card.service.spec.ts e
+        // http-credit-card-purchase.service.spec.ts) e não devem depender de
+        // rede.
         { provide: CreditCardService, useClass: LocalCreditCardService },
+        { provide: CreditCardPurchaseService, useClass: LocalCreditCardPurchaseService },
         // Categorias continuam locais nos testes de componente: eles não
         // exercitam a integração HTTP (coberta em http-category.service.spec.ts)
         // e não devem depender de rede.
@@ -99,7 +154,7 @@ describe('CreditCardsPage', () => {
 
   it('mostra estado vazio quando não há cartões cadastrados, e o carregamento terminou', () => {
     expect(component.cards()).toEqual([]);
-    expect(component.loading()).toBe(false);
+    expect(component.cardsLoading()).toBe(false);
   });
 
   it('cria um cartão e calcula a parcela aproximada de uma compra', () => {
@@ -245,6 +300,28 @@ describe('CreditCardsPage', () => {
       expect(component.purchases()[0].installmentCount).toBe(6);
     });
 
+    it('edita uma compra existente', async () => {
+      const card = createCard();
+      component.viewPurchases(card);
+      component.startPurchaseCreate();
+      component.purchaseForm.setValue({
+        description: 'Geladeira',
+        totalAmount: 1200,
+        purchaseDate: '2026-01-10',
+        installmentCount: 6,
+        categoryId: 'cat-1',
+      });
+      component.savePurchase();
+
+      const purchase = component.purchases()[0];
+      const purchaseService = TestBed.inject(CreditCardPurchaseService);
+      await new Promise<void>((resolve) => {
+        purchaseService.update(purchase.id, { totalAmount: 1500 }).subscribe(() => resolve());
+      });
+
+      expect(component).toBeTruthy();
+    });
+
     it('exclui uma compra após confirmação', () => {
       const card = createCard();
       component.viewPurchases(card);
@@ -367,6 +444,18 @@ describe('CreditCardsPage', () => {
 
       expect(component.purchases()[0].purchaseDate).toBe('2026-12-31');
     });
+
+    it('exibe installmentAmount do backend quando presente, em vez da estimativa local', () => {
+      const purchase = creditCardPurchase({ totalAmount: 1000, installmentCount: 3, installmentAmount: 333.34 });
+
+      expect(component.displayInstallmentAmount(purchase)).toBe(333.34);
+    });
+
+    it('usa a estimativa local quando installmentAmount não está presente', () => {
+      const purchase = creditCardPurchase({ totalAmount: 1200, installmentCount: 6, installmentAmount: undefined });
+
+      expect(component.displayInstallmentAmount(purchase)).toBe(200);
+    });
   });
 
   describe('dados órfãos', () => {
@@ -433,6 +522,15 @@ describe('CreditCardsPage', () => {
       // resolve normalmente, sem fallback.
       expect(component.cardName(card.id)).toBe(card.name);
     });
+
+    it('cartão inativo em histórico continua representável (não vira fallback)', () => {
+      const card = createCard();
+      component.startCardEdit(card);
+      component.cardForm.patchValue({ active: false });
+      component.saveCard();
+
+      expect(component.cardName(card.id)).toBe(card.name);
+    });
   });
 
   describe('carregamento e compras locais', () => {
@@ -456,18 +554,20 @@ describe('CreditCardsPage', () => {
       await fixture.whenStable();
 
       expect(component.allPurchases().length).toBe(1);
-      expect(component.loading()).toBe(false);
+      expect(component.cardsLoading()).toBe(false);
     });
   });
 });
 
-describe('CreditCardsPage (loading)', () => {
+describe('CreditCardsPage (carregamento e condição de corrida)', () => {
   let component: CreditCardsPage;
   let fixture: ComponentFixture<CreditCardsPage>;
   let creditCards: ControlledCreditCardService;
+  let purchases: ControlledCreditCardPurchaseService;
 
   beforeEach(async () => {
     creditCards = new ControlledCreditCardService();
+    purchases = new ControlledCreditCardPurchaseService();
 
     await TestBed.configureTestingModule({
       imports: [CreditCardsPage],
@@ -475,7 +575,7 @@ describe('CreditCardsPage (loading)', () => {
         provideNoopAnimations(),
         { provide: CreditCardService, useValue: creditCards },
         { provide: CategoryService, useClass: LocalCategoryService },
-        { provide: CreditCardPurchaseService, useClass: LocalCreditCardPurchaseService },
+        { provide: CreditCardPurchaseService, useValue: purchases },
       ],
     }).compileComponents();
 
@@ -484,50 +584,104 @@ describe('CreditCardsPage (loading)', () => {
     await fixture.whenStable();
   });
 
-  it('mantém o carregamento até a primeira resposta, sem mostrar o estado vazio antes disso', () => {
-    expect(component.loading()).toBe(true);
+  it('mantém o carregamento de cartões até a primeira resposta, sem mostrar o estado vazio antes disso', () => {
+    expect(component.cardsLoading()).toBe(true);
     expect(component.cards()).toEqual([]);
 
     creditCards.subject.next([]);
 
-    expect(component.loading()).toBe(false);
+    expect(component.cardsLoading()).toBe(false);
     expect(component.cards()).toEqual([]);
   });
 
-  it('encerra o carregamento após receber os cartões', () => {
+  it('encerra o carregamento de cartões após receber os cartões', () => {
     creditCards.subject.next([creditCard()]);
 
-    expect(component.loading()).toBe(false);
+    expect(component.cardsLoading()).toBe(false);
     expect(component.cards()).toEqual([creditCard()]);
   });
 
-  it('encerra o carregamento mesmo quando a requisição falha', () => {
+  it('encerra o carregamento de cartões mesmo quando a requisição falha', () => {
     creditCards.subject.error(new Error('falha de rede'));
 
-    expect(component.loading()).toBe(false);
+    expect(component.cardsLoading()).toBe(false);
   });
 
-  it('compras locais aparecem mesmo antes do GET de cartões terminar', async () => {
-    const purchaseService = TestBed.inject(CreditCardPurchaseService);
-    await new Promise<void>((resolve) => {
-      purchaseService
-        .create({
-          creditCardId: 'card-1',
-          description: 'Compra antes do GET',
-          totalAmount: 80,
-          purchaseDate: '2026-03-01',
-          installmentCount: 1,
-          categoryId: 'cat-1',
-        })
-        .subscribe(() => resolve());
-    });
+  it('purchasesLoading fica true assim que uma compra é buscada por cartão, e false após a resposta', () => {
+    creditCards.subject.next([creditCard()]);
+    component.viewPurchases(creditCard());
 
-    fixture = TestBed.createComponent(CreditCardsPage);
-    component = fixture.componentInstance;
-    await fixture.whenStable();
+    expect(component.purchasesLoading()).toBe(true);
 
-    // O GET de cartões ainda não emitiu (subject controlado manualmente),
-    // mas a compra local já deve estar carregada.
+    purchases.byCardSubject.next([creditCardPurchase()]);
+
+    expect(component.purchasesLoading()).toBe(false);
+    expect(component.purchases()).toEqual([creditCardPurchase()]);
+  });
+
+  it('purchasesLoading encerra mesmo quando a busca por cartão falha', () => {
+    creditCards.subject.next([creditCard()]);
+    component.viewPurchases(creditCard());
+
+    purchases.byCardSubject.error(new Error('falha de rede'));
+
+    expect(component.purchasesLoading()).toBe(false);
+  });
+
+  it('cardsLoading e purchasesLoading são independentes: cartões resolvem primeiro', () => {
+    creditCards.subject.next([creditCard()]);
+    expect(component.cardsLoading()).toBe(false);
+
+    component.viewPurchases(creditCard());
+    expect(component.purchasesLoading()).toBe(true);
+
+    purchases.byCardSubject.next([creditCardPurchase()]);
+    expect(component.purchasesLoading()).toBe(false);
+  });
+
+  it('cardsLoading e purchasesLoading são independentes: compras resolvem primeiro', () => {
+    component.viewPurchases(creditCard());
+    expect(component.purchasesLoading()).toBe(true);
+    expect(component.cardsLoading()).toBe(true);
+
+    purchases.byCardSubject.next([creditCardPurchase()]);
+    expect(component.purchasesLoading()).toBe(false);
+    expect(component.cardsLoading()).toBe(true);
+
+    creditCards.subject.next([creditCard()]);
+    expect(component.cardsLoading()).toBe(false);
+  });
+
+  it('todas as compras (allPurchases) chegam antes dos cartões sem quebrar a página', () => {
+    expect(() => purchases.allSubject.next([creditCardPurchase({ creditCardId: 'card-1' })])).not.toThrow();
+
+    expect(component.allPurchases().length).toBe(1);
+    // Sem os cartões ainda carregados, a compra é temporariamente tratada
+    // como órfã — não é ocultada, apenas ainda não resolvida.
+    expect(component.orphanPurchases().length).toBe(1);
+
+    creditCards.subject.next([creditCard({ id: 'card-1' })]);
+
+    // Assim que os cartões chegam, a compra deixa de ser órfã.
+    expect(component.orphanPurchases().length).toBe(0);
+  });
+
+  it('cartões chegam antes de todas as compras (allPurchases) sem quebrar a página', () => {
+    creditCards.subject.next([creditCard({ id: 'card-1' })]);
+    expect(component.cardsLoading()).toBe(false);
+
+    expect(() => purchases.allSubject.next([creditCardPurchase({ creditCardId: 'card-1' })])).not.toThrow();
+
+    expect(component.allPurchases().length).toBe(1);
+    expect(component.orphanPurchases().length).toBe(0);
+  });
+
+  it('compras locais (allPurchases) aparecem mesmo antes do GET de cartões terminar', () => {
+    expect(component.cardsLoading()).toBe(true);
+
+    purchases.allSubject.next([creditCardPurchase()]);
+
     expect(component.allPurchases().length).toBeGreaterThan(0);
+    expect(component.cardsLoading()).toBe(true);
   });
 });

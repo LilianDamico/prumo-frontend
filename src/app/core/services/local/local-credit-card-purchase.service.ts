@@ -7,6 +7,7 @@ import { LocalStorageService } from '../storage/local-storage.service';
 import {
   CreditCardPurchaseService,
   CreateCreditCardPurchaseInput,
+  CreditCardPurchaseFilters,
   UpdateCreditCardPurchaseInput,
 } from '../credit-card-purchase.service';
 
@@ -42,16 +43,13 @@ export class LocalCreditCardPurchaseService extends CreditCardPurchaseService {
     STORAGE_KEY,
   );
 
-  getAll(): Observable<CreditCardPurchase[]> {
-    return of((this.repository.getAll() as StoredCreditCardPurchase[]).map(normalizePurchase));
+  getAll(filters?: CreditCardPurchaseFilters): Observable<CreditCardPurchase[]> {
+    const all = (this.repository.getAll() as StoredCreditCardPurchase[]).map(normalizePurchase);
+    return of(all.filter((purchase) => this.matchesFilters(purchase, filters)));
   }
 
   getByCard(creditCardId: string): Observable<CreditCardPurchase[]> {
-    return of(
-      (this.repository.getAll() as StoredCreditCardPurchase[])
-        .map(normalizePurchase)
-        .filter((purchase) => purchase.creditCardId === creditCardId),
-    );
+    return this.getAll({ creditCardId });
   }
 
   getById(id: string): Observable<CreditCardPurchase | undefined> {
@@ -76,5 +74,28 @@ export class LocalCreditCardPurchaseService extends CreditCardPurchaseService {
   remove(id: string): Observable<void> {
     this.repository.remove(id);
     return of(undefined);
+  }
+
+  /** Reflete os mesmos filtros aceitos pelo backend (`findAllFiltered`). */
+  private matchesFilters(purchase: CreditCardPurchase, filters?: CreditCardPurchaseFilters): boolean {
+    if (!filters) {
+      return true;
+    }
+    if (filters.creditCardId !== undefined && purchase.creditCardId !== filters.creditCardId) {
+      return false;
+    }
+    if (filters.categoryId !== undefined && purchase.categoryId !== filters.categoryId) {
+      return false;
+    }
+    if (filters.installmentCount !== undefined && purchase.installmentCount !== filters.installmentCount) {
+      return false;
+    }
+    if (filters.from !== undefined && purchase.purchaseDate < filters.from) {
+      return false;
+    }
+    if (filters.to !== undefined && purchase.purchaseDate > filters.to) {
+      return false;
+    }
+    return true;
   }
 }

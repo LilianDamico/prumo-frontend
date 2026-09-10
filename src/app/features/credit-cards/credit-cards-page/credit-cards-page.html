@@ -47,7 +47,7 @@
   </form>
 }
 
-@if (loading()) {
+@if (cardsLoading()) {
   <p class="credit-card-list__loading">Carregando cartões…</p>
 } @else if (cards().length === 0) {
   <app-empty-state
@@ -141,7 +141,9 @@
             </form>
           }
 
-          @if (purchases().length === 0) {
+          @if (purchasesLoading()) {
+            <p class="purchase-list__loading">Carregando compras…</p>
+          } @else if (purchases().length === 0) {
             <app-empty-state
               message="Nenhuma compra registrada para este cartão."
               hint="Cadastre uma compra parcelada para ver o valor aproximado de cada parcela."
@@ -159,7 +161,7 @@
                       <app-money-value [value]="purchase.totalAmount" /> em
                       {{ purchase.installmentCount }}
                       vezes — aproximadamente
-                      <app-money-value [value]="purchaseInstallmentAmount(purchase)" /> por mês
+                      <app-money-value [value]="displayInstallmentAmount(purchase)" /> por mês
                     </span>
                   </div>
                   <button mat-icon-button (click)="removePurchase(purchase)" aria-label="Excluir compra">
@@ -179,8 +181,9 @@
   <section class="credit-card-orphan-purchases">
     <h3>Compras sem cartão correspondente</h3>
     <p class="credit-card-orphan-purchases__hint">
-      Estas compras foram cadastradas localmente e referenciam um cartão que não existe mais nesta lista.
-      Elas continuam guardadas e podem ser excluídas se não forem mais necessárias.
+      Estas compras referenciam um cartão que não está mais nesta lista (por exemplo, dados salvos localmente
+      antes da integração com o servidor). Elas continuam guardadas e podem ser excluídas se não forem mais
+      necessárias.
     </p>
     <ul class="purchase-list">
       @for (purchase of orphanPurchases(); track purchase.id) {
